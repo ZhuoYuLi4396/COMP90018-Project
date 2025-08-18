@@ -10,5 +10,6 @@
     - 在 `/app/src/main/res/values/styles.xml` 定义输入框和按钮的基础样式
     - 在 `/app/src/main/res/values/themes.xml` 调整应用主题，使之与 Figma 设计尽量保持一致
 <img width="289" height="504" alt="image" src="https://github.com/user-attachments/assets/bb25560c-894a-497c-8829-60c9769c3c0e" />
+
 - 导入并应用 Figma UI 示例中的 Inter 字体（`/app/src/main/res/font/Inter`）
 - **Next:** 使用 Java 实现注册页面的逻辑class -  `SignUpActivity` ，和目前的activity_sign_up.xml形成完整的注册功能
