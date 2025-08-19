@@ -1,16 +1,20 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.google.services) // Jinglin 8.18.2025
+    //alias(libs.plugins.google.services) // Jinglin 8.18.2025
 }
 
 android {
     namespace = "unimelb.comp90018.equaltrip"
-    compileSdk = 34
+    //这里SDK要用35，34报错
+    //compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "unimelb.comp90018.equaltrip"
         minSdk = 33
-        targetSdk = 34
+        //targetSdk = 34
+        //不用35报错
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
