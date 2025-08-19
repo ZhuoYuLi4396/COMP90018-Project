@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">EqualTrip</string>
+    <!-- Imported from Figma UI design  ⬇️  -->
+    <string name="equaltrip">EqualTrip</string>
+    <string name="name">Name</string>
+    <string name="email_or_ph">Email or Phone</string>
+    <string name="password">Password</string>
+    <string name="confirm_pas">Confirm Password</string>
+    <string name="i_agree_to_">I agree to the Terms and Privacy Policy</string>
+    <string name="action_sign_up">Create Account</string>
+    <string name="already_hav">Already have an account? Sign in</string>
+    <string name="split_bills">Split bills in trips</string>
+
+</resources>

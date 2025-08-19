@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Imported from Figma UI design  ⬇️  -->
+    <!-- Title 40sp black（Figma: EqualTrip） -->
+    <style name="TextAppearance.EqualTrip.Title" parent="@android:style/TextAppearance">
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">700</item> <!-- Bold -->
+        <item name="android:textSize">48sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Subtitle 16sp #666（Figma: Split bills in trips） -->
+    <style name="TextAppearance.EqualTrip.Subtitle" parent="@android:style/TextAppearance">
+        <item name="android:textSize">19sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item> <!-- Regular -->
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- Label 16sp black（Figma: Name/Email/Password/Confirm） -->
+    <style name="TextAppearance.EqualTrip.Label" parent="@android:style/TextAppearance">
+        <item name="android:textSize">19sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item> <!-- Regular -->
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Terms 12sp black -->
+    <style name="TextAppearance.EqualTrip.Terms" parent="@android:style/TextAppearance">
+        <item name="android:textSize">15sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item> <!-- Regular -->
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Footer 12sp black（Already have an account？） -->
+    <style name="TextAppearance.EqualTrip.Footer" parent="@android:style/TextAppearance">
+        <item name="android:textSize">15sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item> <!-- Regular -->
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Unified "gray background fill" input box style
+    - 黑色的上方标签 -->
+    <style name="TextAppearance.EqualTrip.FieldLabel" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">#000000</item>
+        <item name="android:textStyle">normal</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item> <!-- Regular -->
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- 灰色填充的输入框（Filled Box） -->
+    <style name="EqualTrip.TextInput.Outlined" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/field_fill</item>          <!-- 例如浅灰 #F5F5F5 -->
+        <item name="boxStrokeColor">@color/field_stroke</item>            <!-- 例如 #DDDDDD -->
+        <item name="boxStrokeWidth">2dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item> <!-- 聚焦时更明显 -->
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item> <!-- Regular -->
+        <item name="boxCornerRadiusTopStart">@dimen/field_corner</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/field_corner</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/field_corner</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/field_corner</item>
+
+
+        <!-- 取消内部 hint（用外部 label 了） -->
+        <item name="hintEnabled">false</item>
+        <!-- 内边距/字色依输入框中的 EditText 控制 -->
+    </style>
+
+
+    <!-- 黑色按钮 -->
+    <style name="Widget.EqualTrip.Button.Primary" parent="Widget.Material3.Button">
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">600</item> <!-- SemiBold -->
+        <item name="android:textSize">18sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/btn_text_on_primary</item>
+        <item name="backgroundTint">@color/btn_primary</item>
+        <item name="cornerRadius">@dimen/btn_corner</item>
+        <item name="android:layout_height">48dp</item>
+    </style>
+
+
+</resources>

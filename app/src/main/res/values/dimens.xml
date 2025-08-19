@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Imported from Figma UI design  ⬇️  -->
+    <dimen name="page_padding">25dp</dimen>
+    <dimen name="subtitle_top_gap">8dp</dimen>
+    <dimen name="field_gap">30dp</dimen>
+    <dimen name="terms_gap">12dp</dimen>
+    <dimen name="error_gap">8dp</dimen>
+    <dimen name="btn_top_gap">16dp</dimen>
+    <dimen name="btn_corner">10dp</dimen>
+    <dimen name="footer_top_gap">24dp</dimen>
+    <dimen name="field_corner">10dp</dimen>
+    <dimen name="field_horizontal_margin">40dp</dimen>
+
+
+</resources>
+

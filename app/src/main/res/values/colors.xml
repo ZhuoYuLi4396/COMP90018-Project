@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Imported from Figma UI design  ⬇️  -->
+    <color name="bg_page">#FFFFFF</color>
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#666666</color>
+    <color name="text_error">#D32F2F</color>
+    <color name="btn_primary">#000000</color>
+    <color name="btn_text_on_primary">#FFFFFF</color>
+    <color name="input_bg">#EFEFEF</color>      <!-- input box gray bg -->
+    <color name="input_stroke">#DDDDDD</color>  <!-- gray stroke (optional）-->
+    <color name="field_fill">#F5F5F5</color>
+    <color name="field_stroke">#DDDDDD</color>
+
+
+</resources>
+
