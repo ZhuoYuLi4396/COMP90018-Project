@@ -14,7 +14,9 @@
     <color name="input_stroke">#DDDDDD</color>  <!-- gray stroke (optional）-->
     <color name="field_fill">#F5F5F5</color>
     <color name="field_stroke">#DDDDDD</color>
-
+    <color name="et_primary">#111111</color>
+    <color name="et_error">#D32F2F</color>  <!-- 错误红 -->
+    <color name="et_outline">#9E9E9E</color>
 
 </resources>
 
