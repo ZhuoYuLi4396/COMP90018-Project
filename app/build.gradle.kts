@@ -1,16 +1,16 @@
 plugins {
     alias(libs.plugins.android.application)
+    //id("com.google.gms.google-services") version "4.4.3" apply false
     alias(libs.plugins.google.services) // Jinglin 8.18.2025
 }
 
 android {
     namespace = "unimelb.comp90018.equaltrip"
-    compileSdk = 34
-
+    compileSdk = 36
     defaultConfig {
         applicationId = "unimelb.comp90018.equaltrip"
         minSdk = 33
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -48,4 +48,4 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
 }
 
-android { buildFeatures { viewBinding = true } }
+
