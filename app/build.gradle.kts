@@ -3,7 +3,6 @@ plugins {
     // alias(libs.plugins.google.services) // Jinglin 8.18.2025
 }
 
-
 android {
     namespace = "unimelb.comp90018.equaltrip"
     compileSdk = 35
@@ -48,5 +47,6 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 }
+
 
 android { buildFeatures { viewBinding = true } }

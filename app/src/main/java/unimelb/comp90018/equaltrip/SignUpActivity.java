@@ -22,6 +22,11 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+
+// Author: Jinglin Lei
+// SignUp Function
+//Date: 2025-08-24
+
 public class SignUpActivity extends AppCompatActivity {
 
     private TextInputLayout tilName, tilEmail, tilPassword, tilConfirm;
