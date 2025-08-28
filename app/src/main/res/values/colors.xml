@@ -17,6 +17,7 @@
     <color name="et_primary">#111111</color>
     <color name="et_error">#D32F2F</color>  <!-- 错误红 -->
     <color name="et_outline">#9E9E9E</color>
+    <color name="link_blue">#1E88E5</color>
 
 </resources>
 

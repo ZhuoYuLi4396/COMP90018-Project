@@ -82,7 +82,7 @@
             android:id="@+id/etName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
+            android:minHeight="@dimen/input_min_height"
             android:paddingVertical="12dp"
             android:maxLines="1"
             android:ellipsize="end"
@@ -125,14 +125,14 @@
             android:id="@+id/etEmail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:paddingVertical="12dp"
-            android:maxLines="1"
+            android:autofillHints="emailAddress"
             android:ellipsize="end"
-            android:scrollHorizontally="true"
             android:includeFontPadding="false"
             android:inputType="textEmailAddress"
-            android:autofillHints="emailAddress"
+            android:maxLines="1"
+            android:minHeight="@dimen/input_min_height"
+            android:paddingVertical="12dp"
+            android:scrollHorizontally="true"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary" />
     </com.google.android.material.textfield.TextInputLayout>
@@ -170,7 +170,7 @@
             android:id="@+id/etPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
+            android:minHeight="@dimen/input_min_height"
             android:paddingVertical="12dp"
             android:maxLines="1"
             android:ellipsize="end"
@@ -215,7 +215,7 @@
             android:id="@+id/etConfirm"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
+            android:minHeight="@dimen/input_min_height"
             android:paddingVertical="12dp"
             android:maxLines="1"
             android:ellipsize="end"
@@ -296,4 +296,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="@dimen/footer_top_gap"
         android:layout_marginBottom="@dimen/page_padding"/>
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>

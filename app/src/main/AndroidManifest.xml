@@ -11,15 +11,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
-        <!--<activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>-->
         <!-- SignUpActivity 作为启动页 -->
         <activity
             android:name=".SignUpActivity"
@@ -29,6 +21,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-    </application>
 
+        <!-- 声明 SignInActivity（非启动页，不需要 intent-filter） -->
+        <activity
+            android:name=".SignInActivity"
+            android:exported="false" />
+
+    </application>
 </manifest>

@@ -11,4 +11,11 @@
     <string name="already_hav">Already have an account? Sign in</string>
     <string name="split_bills">Split bills in trips</string>
 
+    <!-- app/src/main/res/values/strings.xml -->
+    <string name="welcome_back">Welcome back</string>
+    <string name="remember_me">Remember me</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="action_sign_in">Sign in</string>
+    <string name="dont_have_account">Don’t have an account? Sign up</string>
+
 </resources>
