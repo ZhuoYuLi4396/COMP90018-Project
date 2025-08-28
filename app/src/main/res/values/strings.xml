@@ -1,4 +1,5 @@
 <resources>
+
     <string name="app_name">EqualTrip</string>
     <!-- Imported from Figma UI design  ⬇️  -->
     <string name="equaltrip">EqualTrip</string>
