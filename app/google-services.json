@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "458726762793",
+    "project_id": "comp90018project-c116b",
+    "storage_bucket": "comp90018project-c116b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:458726762793:android:80ce48d34af0ea811baf38",
+        "android_client_info": {
+          "package_name": "unimelb.comp90018.equaltrip"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGbyhvu_CnIlx8Z7fVs99bkz0WseY5eLA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

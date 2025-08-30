@@ -1,5 +1,7 @@
 plugins {
-    alias(libs.plugins.android.application)
+//    alias(libs.plugins.android.application)
+    id("com.android.application")
+    id("com.google.gms.google-services")
     // alias(libs.plugins.google.services) // Jinglin 8.18.2025
 }
 
@@ -46,6 +48,14 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
+    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+
+    // TODO: Add the dependencies for Firebase products you want to use
+    // When using the BoM, don't specify versions in Firebase dependencies
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")        // For authentication
+    implementation("com.google.firebase:firebase-firestore")   // For database
 }
 
 

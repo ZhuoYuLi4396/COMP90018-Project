@@ -21,6 +21,11 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import java.util.HashMap;
+import java.util.Map;
 
 
 // Author: Jinglin Lei
@@ -36,10 +41,16 @@ public class SignUpActivity extends AppCompatActivity {
     private TextView tvHaveAccount; // 新增：底部“Already have an account? Sign in”
     private MaterialButton btnSignUp;
 
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_up);
+
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
 
         // 绑定控件
         tilName = findViewById(R.id.tilName);
@@ -63,10 +74,76 @@ public class SignUpActivity extends AppCompatActivity {
         // 按钮点击
         btnSignUp.setOnClickListener(v -> {
             if (validateForm()) {
-                // TODO: 这里写成功逻辑，例如调用 API / Firebase
+                registerUser();
+
                 Toast.makeText(this, "Sign up success!", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void registerUser() {
+        String name = getText(etName);
+        String email = getText(etEmail);
+        String password = getText(etPassword);
+
+        // 显示加载状态
+        btnSignUp.setEnabled(false);
+        btnSignUp.setText("Creating account...");
+
+        // 使用Firebase Auth创建用户
+        mAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // 注册成功，获取新用户的UID
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        if (user != null) {
+                            String uid = user.getUid();
+                            // 存储用户数据到Firestore
+                            saveUserDataToFirestore(uid, name, email, password);
+                            Toast.makeText(this, "Sign up success!", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        // 注册失败
+                        btnSignUp.setEnabled(true);
+                        btnSignUp.setText(R.string.action_sign_up);
+                        tvError.setText("Registration failed: " + task.getException().getMessage());
+                        tvError.setVisibility(View.VISIBLE);
+                    }
+                });
+    }
+
+    /**
+     * 将用户数据保存到Firestore
+     */
+    private void saveUserDataToFirestore(String uid, String name, String email, String password) {
+        // 创建用户数据对象
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("uid", uid);
+        userData.put("email", email);
+        userData.put("password", password);
+        userData.put("userId", name);
+
+        // 将数据保存到Firestore的"users"集合中
+        db.collection("users").document(uid)
+                .set(userData)
+                .addOnSuccessListener(aVoid -> {
+                    // 数据保存成功，跳转到登录页面
+                    Toast.makeText(SignUpActivity.this, "Account created successfully!", Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(SignUpActivity.this, SignInActivity.class));
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    // 数据保存失败
+                    btnSignUp.setEnabled(true);
+                    btnSignUp.setText(R.string.action_sign_up);
+                    tvError.setText("Error saving user data: " + e.getMessage());
+                    tvError.setVisibility(View.VISIBLE);
+
+                    // 删除已创建的Auth用户，因为Firestore保存失败
+                    if (mAuth.getCurrentUser() != null) {
+                        mAuth.getCurrentUser().delete();
+                    }
+                });
     }
 
     /**

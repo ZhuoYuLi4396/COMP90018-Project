@@ -22,20 +22,25 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.FirebaseAuth;
 
 
 public class SignInActivity extends AppCompatActivity {
+
 
     private TextInputLayout tilEmail, tilPassword;
     private TextInputEditText etEmail, etPassword;
     private CheckBox cbRemember;
     private TextView tvError, tvForgot, tvNoAccount;
     private MaterialButton btnSignIn;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_in);
+
+        mAuth = FirebaseAuth.getInstance();
 
         // 绑定控件
         tilEmail = findViewById(R.id.tilEmail);
@@ -55,6 +60,7 @@ public class SignInActivity extends AppCompatActivity {
         btnSignIn.setOnClickListener(v -> {
             if (validateForm()) {
                 boolean remember = cbRemember != null && cbRemember.isChecked();
+                signInUser();
                 // TODO: 调用登录 API；可把 remember 传给后端或本地保存
                 Toast.makeText(this, "Sign in success!", Toast.LENGTH_SHORT).show();
             }
@@ -77,6 +83,41 @@ public class SignInActivity extends AppCompatActivity {
                     Toast.makeText(this, "TODO: go to reset password screen", Toast.LENGTH_SHORT).show()
             );
         }
+    }
+
+    private void signInUser() {
+        String email = getText(etEmail);
+        String password = getText(etPassword);
+        boolean remember = cbRemember != null && cbRemember.isChecked();
+
+        // 禁用登录按钮并显示加载状态
+        btnSignIn.setEnabled(false);
+        btnSignIn.setText("Signing in...");
+
+        // 使用Firebase Auth进行登录验证
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // 登录成功，跳转到首页
+                        Toast.makeText(SignInActivity.this, "Login successful!", Toast.LENGTH_SHORT).show();
+
+                        // 如果不勾选"记住我"，设置为不保持登录状态
+                        if (!remember) {
+                            FirebaseAuth.getInstance().getAccessToken(true);
+                        }
+
+                        // 跳转到首页
+                        Intent intent = new Intent(SignInActivity.this, HomeActivity.class);
+                        startActivity(intent);
+                        finish(); // 关闭当前页面，防止返回
+                    } else {
+                        // 登录失败
+                        btnSignIn.setEnabled(true);
+                        btnSignIn.setText(R.string.action_sign_in);
+                        tvError.setText("Login failed: " + task.getException().getMessage());
+                        tvError.setVisibility(android.view.View.VISIBLE);
+                    }
+                });
     }
 
     /** 让 “No account? Sign up” 中的 “Sign up” 单独变蓝并点击跳转到注册页 */
