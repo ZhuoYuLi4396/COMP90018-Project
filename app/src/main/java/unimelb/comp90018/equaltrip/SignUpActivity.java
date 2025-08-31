@@ -67,16 +67,16 @@ public class SignUpActivity extends AppCompatActivity {
         tvError = findViewById(R.id.tvError);
         btnSignUp = findViewById(R.id.btnSignUp);
 
-        // 绑定“已有账户？Sign in”
-        tvHaveAccount = findViewById(R.id.tvHaveAccount);
-        setupHaveAccountLink(); // 只让“Sign in”变蓝并可点击
 
-        // 按钮点击
+        tvHaveAccount = findViewById(R.id.tvHaveAccount);
+        setupHaveAccountLink();
+
+        // Button click
         btnSignUp.setOnClickListener(v -> {
             if (validateForm()) {
                 registerUser();
 
-                Toast.makeText(this, "Sign up success!", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(this, "Sign up success!", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -86,24 +86,24 @@ public class SignUpActivity extends AppCompatActivity {
         String email = getText(etEmail);
         String password = getText(etPassword);
 
-        // 显示加载状态
+        // Display loading status
         btnSignUp.setEnabled(false);
         btnSignUp.setText("Creating account...");
 
-        // 使用Firebase Auth创建用户
+        // Create users using Firebase Authentication
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        // 注册成功，获取新用户的UID
+                        // Registration successful. Obtain the new user's UID.
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
                             String uid = user.getUid();
-                            // 存储用户数据到Firestore
+                            // Store user data in Firestore
                             saveUserDataToFirestore(uid, name, email, password);
                             Toast.makeText(this, "Sign up success!", Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        // 注册失败
+                        // Registration failed
                         btnSignUp.setEnabled(true);
                         btnSignUp.setText(R.string.action_sign_up);
                         tvError.setText("Registration failed: " + task.getException().getMessage());
@@ -113,7 +113,7 @@ public class SignUpActivity extends AppCompatActivity {
     }
 
     /**
-     * 将用户数据保存到Firestore
+     * Save user data to Firestore
      */
     private void saveUserDataToFirestore(String uid, String name, String email, String password) {
         // 创建用户数据对象
@@ -123,11 +123,11 @@ public class SignUpActivity extends AppCompatActivity {
         userData.put("password", password);
         userData.put("userId", name);
 
-        // 将数据保存到Firestore的"users"集合中
+        // Save the data to the “users” collection in Firestore.
         db.collection("users").document(uid)
                 .set(userData)
                 .addOnSuccessListener(aVoid -> {
-                    // 数据保存成功，跳转到登录页面
+                    // Data saved successfully. Redirecting to the login page.
                     Toast.makeText(SignUpActivity.this, "Account created successfully!", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(SignUpActivity.this, SignInActivity.class));
                     finish();
