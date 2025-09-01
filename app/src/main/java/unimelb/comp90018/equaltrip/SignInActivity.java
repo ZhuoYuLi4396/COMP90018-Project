@@ -79,9 +79,10 @@ public class SignInActivity extends AppCompatActivity {
 
         // “忘记密码？”
         if (tvForgot != null) {
-            tvForgot.setOnClickListener(v ->
-                    Toast.makeText(this, "TODO: go to reset password screen", Toast.LENGTH_SHORT).show()
-            );
+            tvForgot.setOnClickListener(v -> {
+                Intent intent = new Intent(SignInActivity.this, ForgotPasswordActivity.class);
+                startActivity(intent);
+            });
         }
     }
 

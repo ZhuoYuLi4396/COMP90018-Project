@@ -32,6 +32,11 @@
             android:name=".HomeActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EqualTrip" />
+
 
     </application>
 </manifest>
