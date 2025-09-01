@@ -1,14 +1,10 @@
 plugins {
-    alias(libs.plugins.android.application)
-//如果是想不使用firebase那么运行时报错先注释下面这一行
-//如果要联动firebase建议使用firebase官方使用的id格式加json文件
-//报错的原因是因为没用放json文件进去
-    alias(libs.plugins.google.services) // Jinglin 8.18.2025
+
 }
 
 android {
     namespace = "unimelb.comp90018.equaltrip"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "unimelb.comp90018.equaltrip"
@@ -49,6 +45,15 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
+    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+
+    // TODO: Add the dependencies for Firebase products you want to use
+    // When using the BoM, don't specify versions in Firebase dependencies
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")        // For authentication
+    implementation("com.google.firebase:firebase-firestore")   // For database
 }
+
 
 android { buildFeatures { viewBinding = true } }

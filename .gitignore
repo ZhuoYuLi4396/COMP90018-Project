@@ -27,3 +27,5 @@ captures/
 # Keystore files
 *.jks
 *.keystore
+.DS_Store
+.DS_Store

@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,15 +12,33 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
+
+        <!-- SignUpActivity 作为启动页 -->
         <activity
-            android:name=".MainActivity"
+            android:name=".SignUpActivity"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-    </application>
 
+        <!-- 声明 SignInActivity（非启动页，不需要 intent-filter） -->
+        <activity
+            android:name=".SignInActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EqualTrip" />
+
+
+    </application>
 </manifest>
+
+
