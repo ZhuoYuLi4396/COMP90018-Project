@@ -1,7 +1,10 @@
 plugins {
-
+//    alias(libs.plugins.android.application)
+    id("com.android.application")
+    id("com.google.gms.google-services")
+    // alias(libs.plugins.google.services) // Jinglin 8.18.2025
 }
-
+//
 android {
     namespace = "unimelb.comp90018.equaltrip"
     compileSdk = 35
