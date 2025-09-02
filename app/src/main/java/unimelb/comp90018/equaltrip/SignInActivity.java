@@ -42,7 +42,6 @@ public class SignInActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // 绑定控件
         tilEmail = findViewById(R.id.tilEmail);
         tilPassword = findViewById(R.id.tilPassword);
         etEmail = findViewById(R.id.etEmail);
@@ -53,20 +52,16 @@ public class SignInActivity extends AppCompatActivity {
         tvNoAccount = findViewById(R.id.tvNoAccount);
         btnSignIn = findViewById(R.id.btnSignIn);
 
-        // 只让 “Sign up” 高亮并可点击
         setupNoAccountLink();
 
-        // 点击“登录”
         btnSignIn.setOnClickListener(v -> {
             if (validateForm()) {
                 boolean remember = cbRemember != null && cbRemember.isChecked();
                 signInUser();
-                // TODO: 调用登录 API；可把 remember 传给后端或本地保存
                 Toast.makeText(this, "Sign in success!", Toast.LENGTH_SHORT).show();
             }
         });
 
-        // 键盘回车提交
         if (etPassword != null) {
             etPassword.setOnEditorActionListener((TextView v, int actionId, KeyEvent event) -> {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
