@@ -37,6 +37,9 @@
             android:exported="false"
             android:theme="@style/Theme.EqualTrip" />
 
+        <activity
+            android:name=".AlgorithmTestActivity"
+            android:exported="true" />
 
     </application>
 </manifest>
