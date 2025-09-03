@@ -91,28 +91,28 @@ public class SignInActivity extends AppCompatActivity {
         String password = getText(etPassword);
         boolean remember = cbRemember != null && cbRemember.isChecked();
 
-        // 禁用登录按钮并显示加载状态
+        // Disable the login button and display a loading status.
         btnSignIn.setEnabled(false);
         btnSignIn.setText("Signing in...");
 
-        // 使用Firebase Auth进行登录验证
+        // Using Firebase Authentication for Login Verification
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        // 登录成功，跳转到首页
+                        // Login successful. Redirecting to the homepage.
                         Toast.makeText(SignInActivity.this, "Login successful!", Toast.LENGTH_SHORT).show();
 
-                        // 如果不勾选"记住我"，设置为不保持登录状态
+                        // If you do not check “Remember Me,” you will not remain logged in.
                         if (!remember) {
                             FirebaseAuth.getInstance().getAccessToken(true);
                         }
 
-                        // 跳转到首页
+                        // Jump to the homepage
                         Intent intent = new Intent(SignInActivity.this, HomeActivity.class);
                         startActivity(intent);
                         finish(); // 关闭当前页面，防止返回
                     } else {
-                        // 登录失败
+                        // Login failed
                         btnSignIn.setEnabled(true);
                         btnSignIn.setText(R.string.action_sign_in);
                         tvError.setText("Login failed: " + task.getException().getMessage());
