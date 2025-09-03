@@ -249,12 +249,22 @@
         <TextView
             android:id="@+id/tvTerms"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/i_agree_to_"
-            android:textSize="15sp"
-            android:textAppearance="@style/TextAppearance.EqualTrip.Terms"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:paddingStart="8dp"
-            android:layout_weight="1"/>
+            android:text="@string/i_agree_to_"
+            android:textAppearance="@style/TextAppearance.EqualTrip.Terms"
+            android:textSize="15sp" />
+
+<!--        <TextView-->
+<!--            android:id="@+id/tvTerms"-->
+<!--            android:layout_width="242dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_weight="1"-->
+<!--            android:paddingStart="8dp"-->
+<!--            android:text="@string/i_agree_to_"-->
+<!--            android:textAppearance="@style/TextAppearance.EqualTrip.Terms"-->
+<!--            android:textSize="15sp" />-->
     </LinearLayout>
 
     <!-- Page-level error -->
