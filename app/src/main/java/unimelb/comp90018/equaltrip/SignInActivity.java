@@ -58,7 +58,7 @@ public class SignInActivity extends AppCompatActivity {
             if (validateForm()) {
                 boolean remember = cbRemember != null && cbRemember.isChecked();
                 signInUser();
-                Toast.makeText(this, "Sign in success!", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(this, "Sign in success!", Toast.LENGTH_SHORT).show();
             }
         });
 
