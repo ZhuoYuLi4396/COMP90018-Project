@@ -19,5 +19,8 @@
     <string name="action_sign_in">Sign in</string>
     <string name="dont_have_account">Don’t have an account? Sign up</string>
 
+    <!--Splash-->
+    <string name="slogan_trip_splitting">Your trip splitting assistant</string>
+
 
 </resources>

@@ -13,17 +13,27 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- SignUpActivity 作为启动页 -->
         <activity
-            android:name=".SignUpActivity"
-            android:exported="true">
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.EqualTrip.Splash">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- 声明 SignInActivity（非启动页，不需要 intent-filter） -->
+        <!-- SignUpActivity-->
+        <activity
+            android:name=".SignUpActivity"
+            android:exported="false">
+        </activity>
+            <!--<intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>-->
+
+
         <activity
             android:name=".SignInActivity"
             android:exported="false" />
