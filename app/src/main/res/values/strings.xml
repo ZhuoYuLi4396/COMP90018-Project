@@ -21,6 +21,8 @@
 
     <!--Splash-->
     <string name="slogan_trip_splitting">Your trip splitting assistant</string>
+    <!--Homepage-->
+    <string name="notification">Notifications</string>
 
 
 </resources>
