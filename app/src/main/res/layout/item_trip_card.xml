@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Author: Jinglin Lei
+  Assignment: SignUp Layout
+  Date: 2025-09-04
+-->
+
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/field_gap"
+    app:cardCornerRadius="@dimen/field_corner"
+    app:strokeColor="@color/field_stroke"
+    app:strokeWidth="2dp"
+    app:cardBackgroundColor="@android:color/white"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 顶部灰色占位图 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:background="@color/input_bg" />
+
+        <!-- 信息区 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/tv_title"
+                style="@style/TextAppearance.EqualTrip.Label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                tools:text="Unimelb Trip" />
+
+            <TextView
+                android:id="@+id/tv_city"
+                style="@style/TextAppearance.EqualTrip.Terms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_secondary"
+                tools:text="Melbourne, VIC" />
+
+            <TextView
+                android:id="@+id/tv_meta"
+                style="@style/TextAppearance.EqualTrip.Terms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_secondary"
+                tools:text="Aug 1–5, 2025 | Tripmates: 3" />
+
+            <!-- 三个小圆点占位 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <View
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_chip_circle" />
+                <View
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_chip_circle" />
+                <View
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:background="@drawable/bg_chip_circle" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

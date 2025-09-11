@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:allowBackup="true"
@@ -30,7 +30,16 @@
 
         <activity
             android:name=".HomeActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTask"/>
+
+        <activity android:name=".TripPageActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
+
+        <activity android:name=".ProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
 
         <activity
             android:name=".ForgotPasswordActivity"
@@ -40,6 +49,11 @@
         <activity
             android:name=".AlgorithmTestActivity"
             android:exported="true" />
+
+        <activity android:name=".TripDetailActivity" />
+        <activity android:name=".AddTripActivity"
+            android:windowSoftInputMode="adjustResize"
+            />
 
     </application>
 </manifest>

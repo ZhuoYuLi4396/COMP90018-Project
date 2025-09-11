@@ -4,9 +4,11 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.Intent;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -59,5 +61,33 @@ public class HomeActivity extends AppCompatActivity{
 //            finish();
 //            Toast.makeText(HomeActivity.this, "Logged out", Toast.LENGTH_SHORT).show();
 //        });
+        // 底部导航栏
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_nav);
+        bottomNav.setSelectedItemId(R.id.nav_home); // 当前页面高亮 Home
+
+        bottomNav.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_home) {
+                return true; // 已经在首页
+            } else if (id == R.id.nav_trips) {
+                startActivity(new Intent(this, TripPageActivity.class));
+                overridePendingTransition(0,0);
+                return true;
+            } else if (id == R.id.nav_profile) {
+                startActivity(new Intent(this, ProfileActivity.class));
+                overridePendingTransition(0,0);
+                return true;
+            }
+            return true;
+        });
+
     }
+
+    @Override protected void onResume() {
+        super.onResume();
+        BottomNavigationView bottom = findViewById(R.id.bottom_nav);
+        if (bottom != null) bottom.setSelectedItemId(R.id.nav_home);
+    }
+
+
 }

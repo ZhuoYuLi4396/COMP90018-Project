@@ -20,4 +20,54 @@
     <string name="dont_have_account">Don’t have an account? Sign up</string>
 
 
+    <!-- Trip Page / Bottom Nav -->
+    <string name="home">Home</string>
+    <string name="trips">Trips</string>
+    <string name="profile">Profile</string>
+
+    <!-- Toolbar menu -->
+    <string name="notifications">Notifications</string>
+
+    <!-- Search hint -->
+    <string name="find_your_t">Find your trip</string>
+
+    <string name="filter">Filter</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="add_trip">Add new trip</string>
+
+
+
+    <!--add trip -->
+
+    <string name="add_trip_title">Add Trip</string>
+    <string name="trip_name_label">Trip Name *</string>
+    <string name="trip_name_hint">e.g. Melbourne Adventure</string>
+
+    <string name="location_label">Location *</string>
+    <string name="location_hint">Melbourne, VIC</string>
+
+    <string name="date_label">Date *</string>
+    <string name="date_to">to</string>
+    <string name="date_start_placeholder">Aug 25th</string>
+    <string name="date_end_placeholder">Aug 28th</string>
+
+    <string name="description_label">Description</string>
+    <string name="description_hint">e.g. An extraordinary trip…</string>
+
+    <string name="tripmates_label">Tripmates *</string>
+    <string name="tripmates_add_via_bluetooth">Click to add tripmates via Bluetooth</string>
+    <string name="tripmates_add_by_email">Add by entering tripmate’s email</string>
+    <string name="tripmates_added_title">Tripmates added</string>
+
+    <string name="create_trip">Create Trip</string>
+    <string name="avatar">avatar</string>
+    <string name="remove">remove</string>
+
+    <!-- 最小化detail 测试用 -->
+
+    <string name="trip_detail">Trip Detail</string>
+
+
 </resources>

@@ -14,5 +14,10 @@
     <!-- 输入框最小高度 -->
     <dimen name="input_min_height">40dp</dimen>
 
+    <dimen name="section_gap">24dp</dimen>
+    <dimen name="field_gap_small">8dp</dimen>
+
+
+
 </resources>
 

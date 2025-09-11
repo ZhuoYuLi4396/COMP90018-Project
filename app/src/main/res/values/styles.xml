@@ -94,4 +94,18 @@
         <item name="android:layout_height">48dp</item>
     </style>
 
+    <style name="ToolbarTitleText" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
+        <item name="android:textSize">32sp</item>   <!-- 修改字号 -->
+        <item name="android:textStyle">bold</item> <!-- 可选：加粗 -->
+    </style>
+
+    <style name="BottomNavText" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">15sp</item>
+        <item name="android:lineSpacingExtra">20sp</item>    <!-- 文字更靠近图标 -->
+    </style>
+
+
+
+
 </resources>
+
