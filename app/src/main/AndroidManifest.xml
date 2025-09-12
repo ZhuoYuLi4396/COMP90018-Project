@@ -41,6 +41,30 @@
             android:name=".AlgorithmTestActivity"
             android:exported="true" />
 
+        <!-- Payer Selection Activity -->
+        <activity
+            android:name=".PayerSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
+        </activity>
+
+        <!-- Participants Selection Activity -->
+        <activity
+            android:name=".ParticipantsSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
+        </activity>
+
+        <activity
+            android:name=".AddBillActivity"
+            android:exported="false" />
+
     </application>
 </manifest>
 
