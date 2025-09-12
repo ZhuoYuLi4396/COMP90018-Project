@@ -94,4 +94,13 @@
         <item name="android:layout_height">48dp</item>
     </style>
 
+    <!-- ====== 只保留底部两个圆角 ====== -->
+    <style name="ShapeAppearanceOverlay.Trip.Header">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeTopRight">0dp</item>
+        <item name="cornerSizeBottomLeft">10dp</item>
+        <item name="cornerSizeBottomRight">10dp</item>
+    </style>
+
 </resources>
