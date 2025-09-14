@@ -1,19 +1,16 @@
 package unimelb.comp90018.equaltrip;
 
 import android.os.Bundle;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.content.Intent;
 
-
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentSnapshot;
-
 
 public class HomeActivity extends AppCompatActivity {
 
@@ -23,28 +20,25 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_home); // 确保使用的是你那份首页布局
+        setContentView(R.layout.activity_home);
 
-        // 1) 绑定控件（注意这些 id 必须在 activity_home.xml 中存在）
         tvUsername = findViewById(R.id.tvUsername);
         tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
         tvUnpaidBillsNum = findViewById(R.id.tvUnpaidBillsNum);
 
-        // 2) Firebase Auth
+        // Firebase Auth
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
-            // 未登录：返回注册（或登录）页；按你之前的流程这里走 SignUp
             startActivity(new Intent(this, SignUpActivity.class));
             finish();
             return;
         }
 
-        // 3) 默认占位数据（先能跑；以后替换成真实统计）
+        // mock / Firestore 覆盖
         tvOngoingTripsNum.setText(" 2 ");
         tvUnpaidBillsNum.setText("6 ");
 
-        // 4) 先用 Firebase 的 displayName / email 前缀作为用户名
         String name = currentUser.getDisplayName();
         if (name == null || name.isEmpty()) {
             String email = currentUser.getEmail();
@@ -54,7 +48,6 @@ public class HomeActivity extends AppCompatActivity {
         }
         tvUsername.setText((name != null && !name.isEmpty()) ? name : "User");
 
-        // 5) 再尝试用 Firestore 覆盖显示名与统计（可选）
         FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(currentUser.getUid())
@@ -77,5 +70,31 @@ public class HomeActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Failed to load profile.", Toast.LENGTH_SHORT).show());
+
+        // ===== BottomNav：Home -> Profile / Trips =====
+        BottomNavigationView bottom = findViewById(R.id.bottomNav);
+        if (bottom != null) {
+            bottom.setSelectedItemId(R.id.nav_home);        // 高亮 Home
+            bottom.setOnItemReselectedListener(item -> {});  // 选中当前项不重复触发
+
+            bottom.setOnItemSelectedListener(item -> {
+                int id = item.getItemId();
+                if (id == R.id.nav_home) {
+                    return true; // 已在 Home
+                } else if (id == R.id.nav_profile) {
+                    Intent i = new Intent(HomeActivity.this, ProfileActivity.class);
+                    i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(i);
+                    overridePendingTransition(0, 0);
+                    finish(); // 想保留返回栈可去掉
+                    return true;
+                } else if (id == R.id.nav_trips) {
+                    Toast.makeText(this, "Trips coming soon", Toast.LENGTH_SHORT).show();
+                    bottom.setSelectedItemId(R.id.nav_home); // 保持选中 Home
+                    return false;
+                }
+                return false;
+            });
+        }
     }
 }

@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -13,6 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
+        <!-- 启动页 -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
@@ -23,29 +23,29 @@
             </intent-filter>
         </activity>
 
-        <!-- SignUpActivity-->
+        <!-- 账号相关 -->
         <activity
             android:name=".SignUpActivity"
-            android:exported="false">
-        </activity>
-            <!--<intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>-->
-
-
+            android:exported="false" />
         <activity
             android:name=".SignInActivity"
             android:exported="false" />
-
-        <activity
-            android:name=".HomeActivity"
-            android:exported="false" />
-
         <activity
             android:name=".ForgotPasswordActivity"
             android:exported="false"
             android:theme="@style/Theme.EqualTrip" />
+
+        <!-- 首页（可选：singleTop 防止重复实例） -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <!-- ✅ 新增：Profile 页面（修复无法跳转问题） -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".AlgorithmTestActivity"
@@ -53,5 +53,3 @@
 
     </application>
 </manifest>
-
-
