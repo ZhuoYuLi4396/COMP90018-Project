@@ -26,6 +26,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -35,6 +37,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.List;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.WriteBatch;
+
 /**
  * AddTripActivity - full skeleton with improvements:
  *  - Date range picker
@@ -42,6 +51,9 @@ import java.util.List;
  *  - Create trip in Firestore (with id backfill + complete listener)
  *  - Save & restore UI state on rotation/process recreation
  */
+
+
+
 public class AddTripActivity extends AppCompatActivity {
 
     // Views
@@ -173,7 +185,7 @@ public class AddTripActivity extends AppCompatActivity {
         // Add email (check Firestore first)
         btnAddMate.setOnClickListener(v -> {
             String emailRaw = safeText(etMateEmail);
-            String emailLower = emailRaw.toLowerCase(Locale.ROOT);
+            String email = emailRaw.toLowerCase(Locale.ROOT);
 
             if (emailRaw.isEmpty()) {
                 toast("Please enter an email");
@@ -189,12 +201,12 @@ public class AddTripActivity extends AppCompatActivity {
             }
 
             btnAddMate.setEnabled(false);
-            // Try "email", then fallback to "emailLower"
+            // Try "email", then fallback to "email"
             checkUserExists(emailRaw, exists -> {
                 btnAddMate.setEnabled(true);
                 if (exists) {
                     // Store normalized lowercase for consistency
-                    tripmates.add(emailLower);
+                    tripmates.add(email);
                     emailAdapter.notifyItemInserted(tripmates.size() - 1);
                     etMateEmail.setText("");
                 } else {
@@ -219,9 +231,9 @@ public class AddTripActivity extends AppCompatActivity {
         });
     }
 
-    /** Query Firestore: try "email" first, then fallback to "emailLower" if present */
+    /** Query Firestore: try "email" first, then fallback to "email" if present */
     private void checkUserExists(String emailRaw, UserCheckCallback callback) {
-        String emailLower = emailRaw.toLowerCase(Locale.ROOT);
+        String email = emailRaw.toLowerCase(Locale.ROOT);
 
         db.collection("users")
                 .whereEqualTo("email", emailRaw)
@@ -232,9 +244,9 @@ public class AddTripActivity extends AppCompatActivity {
                     if (exists) {
                         callback.onResult(true);
                     } else {
-                        // Fallback: emailLower
+                        // Fallback: email
                         db.collection("users")
-                                .whereEqualTo("emailLower", emailLower)
+                                .whereEqualTo("email", email)
                                 .limit(1)
                                 .get()
                                 .addOnSuccessListener(q2 -> {
@@ -282,6 +294,11 @@ public class AddTripActivity extends AppCompatActivity {
         db.collection("trips")
                 .add(data)
                 .addOnSuccessListener(docRef -> {
+//                    // ★ 写 members 子合集（创建者 + 受邀邮箱）
+//                    String ownerUid = auth.getCurrentUser().getUid();
+//                    List<String> inviteEmailsLower = new ArrayList<>(tripmates); // 你列表里本来就存小写
+//                    populateMembersSubcollection(docRef.getId(), ownerUid, inviteEmailsLower);
+
                     docRef.update("id", docRef.getId()).addOnCompleteListener(t -> {
                         toast("Trip created successfully!");
 
@@ -430,6 +447,7 @@ public class AddTripActivity extends AppCompatActivity {
         @Override public int getItemCount() { return data.size(); }
     }
 
+
     private static class SimpleEmailVH extends RecyclerView.ViewHolder {
         private final android.widget.TextView tvEmail;
         private final android.widget.ImageView ivRemove;
@@ -448,6 +466,113 @@ public class AddTripActivity extends AppCompatActivity {
 
         void bind(String email) { tvEmail.setText(email); }
     }
+    //在trip合集中添加members data子合集
+    //子合集包含所有参与者（创建人 + 受邀人）{用户名，uid，邮箱}
+//    private void populateMembersSubcollection(String tripId, String ownerUid, List<String> inviteEmailsLower) {
+//        FirebaseFirestore db = FirebaseFirestore.getInstance();
+//        FirebaseUser me = FirebaseAuth.getInstance().getCurrentUser();
+//
+//        DocumentReference tripRef = db.collection("trips").document(tripId);
+//
+//        // 1) 先写入 owner（docId = ownerUid）
+//        WriteBatch first = db.batch();
+//        DocumentReference ownerRef = tripRef.collection("members").document(ownerUid);
+//        Map<String, Object> owner = new HashMap<>();
+//        owner.put("uid", ownerUid);
+//        owner.put("username", null); // 稍后从 /users/{ownerUid}.userId 补充
+//        owner.put("email", me != null && me.getEmail()!=null ? me.getEmail().toLowerCase() : null);
+//        owner.put("role", "owner");
+//        owner.put("status", "active");
+//        owner.put("joinedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+//        first.set(ownerRef, owner, com.google.firebase.firestore.SetOptions.merge());
+//
+//        first.commit().addOnSuccessListener(_ok -> {
+//            db.collection("users").document(ownerUid).get()
+//                    .addOnSuccessListener(doc -> {
+//                        if (doc.exists()) {
+//                            String userId = doc.getString("userId");
+//                            if (userId != null) {
+//                                ownerRef.update("username", userId);
+//                            }
+//                        }
+//
+//                    });
+//
+//            // 2) 受邀邮箱 → /users 查 uid 批量写入（whereIn ≤ 10；超过分批）
+//            if (inviteEmailsLower == null || inviteEmailsLower.isEmpty()) return;
+//            addMembersByEmailInChunks(tripRef, inviteEmailsLower, 0);
+//        });
+//    }
+//
+//    private void addMembersByEmailInChunks(DocumentReference tripRef, List<String> emails, int from) {
+//        final int LIMIT = 10;
+//        int to = Math.min(from + LIMIT, emails.size());
+//        List<String> chunk = emails.subList(from, to);
+//
+//        FirebaseFirestore db = FirebaseFirestore.getInstance();
+//        db.collection("users").whereIn("email", chunk).get()
+//                .addOnSuccessListener(q -> {
+//                    WriteBatch batch = db.batch();
+//
+//                    // 已注册：docId 用 uid
+//                    java.util.Set<String> matched = new java.util.HashSet<>();
+//                    for (com.google.firebase.firestore.DocumentSnapshot u : q.getDocuments()) {
+//                        String uid  = u.contains("uid") ? u.getString("uid") : u.getId();
+//                        String mail = u.getString("email");
+//                        String name = u.getString("userId");
+//                        if (mail != null) matched.add(mail.toLowerCase());
+//
+//                        Map<String,Object> m = new HashMap<>();
+//                        m.put("uid", uid);
+//                        m.put("email", mail != null ? mail.toLowerCase() : null);
+//                        m.put("username", name);
+//                        m.put("role", "member");
+//                        m.put("status", "active");
+//                        m.put("joinedAt", FieldValue.serverTimestamp());
+//                        batch.set(tripRef.collection("members").document(uid),
+//                                m, SetOptions.merge());
+//                    }
+//
+//                    // 未注册邮箱：占位（autoId）
+//                    for (String mail : chunk) {
+//                        String lm = mail == null ? null : mail.toLowerCase();
+//                        if (lm == null || matched.contains(lm)) continue;
+//
+//                        Map<String,Object> invited = new HashMap<>();
+//                        invited.put("uid", null);
+//                        invited.put("email", lm);
+//                        invited.put("username", null);
+//                        invited.put("role", "member");
+//                        invited.put("status", "invited");
+//                        invited.put("joinedAt", FieldValue.serverTimestamp());
+//                        batch.set(tripRef.collection("members").document(),
+//                                invited, SetOptions.merge());
+//                    }
+//
+//                    batch.commit().addOnSuccessListener(_ok -> {
+//                        if (to < emails.size()) addMembersByEmailInChunks(tripRef, emails, to);
+//                    });
+//                })
+//
+//                .addOnFailureListener(e -> {
+//                    // /users 查不到也别让创建失败；直接把这批邮箱都当 invited 写进去
+//                    WriteBatch batch = db.batch();
+//                    for (String mail : chunk) {
+//                        Map<String,Object> invited = new java.util.HashMap<>();
+//                        invited.put("uid", null);
+//                        invited.put("email", mail);
+//                        invited.put("username", null);
+//                        invited.put("role", "member");
+//                        invited.put("status", "invited");
+//                        invited.put("joinedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+//                        batch.set(tripRef.collection("members").document(),
+//                                invited, com.google.firebase.firestore.SetOptions.merge());
+//                    }
+//                    batch.commit().addOnSuccessListener(_ok -> {
+//                        if (to < emails.size()) addMembersByEmailInChunks(tripRef, emails, to);
+//                    });
+//                });
+//    }
 
 
     // ================== Callback ==================
