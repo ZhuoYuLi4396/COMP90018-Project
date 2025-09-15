@@ -59,6 +59,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")        // For authentication
     implementation("com.google.firebase:firebase-firestore")   // For database
+    implementation("com.google.android.gms:play-services-maps:18.2.0") // Google map
 }
 
 

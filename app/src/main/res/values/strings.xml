@@ -23,6 +23,8 @@
     <string name="slogan_trip_splitting">Your trip splitting assistant</string>
     <!--Homepage-->
     <string name="notification">Notifications</string>
+    <string name="google_maps_key">AIzaSyCfJ_YbwTaRgHOMWwFwqAPMiJw9ArRad2o</string>
+
 
 
 </resources>

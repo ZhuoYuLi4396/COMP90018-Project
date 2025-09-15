@@ -126,11 +126,10 @@
         </LinearLayout>
 
         <!-- map -->
-        <FrameLayout
-            android:id="@+id/mapPlaceholder"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/mapCard"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:background="@drawable/bg_map_placeholder"
             app:layout_constraintTop_toBottomOf="@id/rowBills"
             app:layout_constraintBottom_toTopOf="@id/rowButtons"
             app:layout_constraintStart_toStartOf="parent"
@@ -138,7 +137,18 @@
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginTop="18dp"
-            android:layout_marginBottom="18dp"/>
+            android:layout_marginBottom="18dp"
+            app:cardUseCompatPadding="true"
+            app:cardCornerRadius="16dp"
+            app:strokeColor="#D0D0D0"
+            app:strokeWidth="1dp">
+
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/mapFragment"
+                android:name="com.google.android.gms.maps.SupportMapFragment"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- two buttons -->
         <LinearLayout
@@ -182,7 +192,7 @@
                 android:textAllCaps="false"
                 android:textSize="16sp"
                 app:cornerRadius="18dp"
-                
+
                 app:iconSize="20dp"
                 app:iconGravity="textStart"
                 app:iconPadding="12dp"
