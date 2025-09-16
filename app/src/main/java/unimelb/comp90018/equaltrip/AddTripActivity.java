@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Toast;
@@ -395,6 +396,13 @@ public class AddTripActivity extends AppCompatActivity {
         db.collection("trips")
                 .add(data)
                 .addOnSuccessListener(docRef -> {
+                    // 由于是通过tid = NULL的方法来创建的tid，firebase在收到NULL之后会创建tid
+                    // 所以必须要先找到这个tid才可以，否则子合集插不进去。
+                    String tid = docRef.getId();
+                    String ownerUid = FirebaseAuth.getInstance().getUid();
+                    // 假设你的受邀邮箱列表变量叫 tripmates（List<String>）
+                    writeMembersSimple(tid, ownerUid, tripmates);
+                    
                     docRef.update("id", docRef.getId()).addOnCompleteListener(t -> {
                         toast("Trip created successfully!");
 
@@ -563,6 +571,64 @@ public class AddTripActivity extends AppCompatActivity {
     }
 
     // ============ Callbacks ============
+    // Firebase 插入members子合集
+    // 包含创建者、参与人的个人信息
+    private void writeMembersSimple(String tid, String ownerUid, List<String> inviteEmails) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // 1) 创建者：users/{ownerUid} -> trips/{tid}/members/{ownerUid}
+        db.collection("users").document(ownerUid).get()
+                .addOnSuccessListener(ownerSnap -> {
+                    if (ownerSnap.exists()) {
+                        String email  = ownerSnap.getString("email");
+                        String userId = ownerSnap.getString("userId");
+
+                        Map<String, Object> owner = new HashMap<>();
+                        owner.put("uid", ownerUid);
+                        owner.put("email", email);
+                        owner.put("userId", userId);
+                        owner.put("role", "owner");
+
+                        db.collection("trips").document(tid)
+                                .collection("members").document(ownerUid)
+                                .set(owner);
+
+                        // 2) 受邀者：按 email 精确匹配（不做大小写转换）
+                        if (inviteEmails != null) {
+                            for (String em : inviteEmails) {
+                                if (em == null || em.isEmpty()) continue;
+
+                                db.collection("users")
+                                        .whereEqualTo("email", em)   // 精确匹配
+                                        .limit(1)
+                                        .get()
+                                        .addOnSuccessListener(q -> {
+                                            if (!q.isEmpty()) {
+                                                DocumentSnapshot u = q.getDocuments().get(0);
+                                                String uid    = u.getString("uid");
+                                                String email2 = u.getString("email");
+                                                String userId2= u.getString("userId");
+
+                                                if (uid == null) return; // 最小防御
+
+                                                Map<String, Object> m = new HashMap<>();
+                                                m.put("uid", uid);
+                                                m.put("email", email2);
+                                                m.put("userId", userId2);
+                                                m.put("role","member");
+
+                                                db.collection("trips").document(tid)
+                                                        .collection("members").document(uid) // 用 uid 作为文档 id
+                                                        .set(m);
+                                            } else {
+                                                Log.w("AddTripActivity", "invite email not found in users: " + em);
+                                            }
+                                        });
+                            }
+                        }
+                    }
+                });
+    }
     interface UserCheckCallback { void onResult(boolean exists); }
     interface EmailCallback { void onEmail(@Nullable String email); }
 
