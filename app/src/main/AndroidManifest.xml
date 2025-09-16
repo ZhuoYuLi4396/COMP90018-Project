@@ -3,6 +3,38 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- 声明 BLE 能力；如果想允许非 BLE 设备也能安装，把 required 改为 false -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <!-- ===== Android 12+ (API 31+) 的蓝牙运行时权限 ===== -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- ===== 兼容 Android 10 及以下 (API <=30) 的旧权限 ===== -->
+    <!-- 旧版蓝牙权限（31+ 已废弃，但在旧系统仍需要），用 maxSdkVersion 限定只在旧系统请求 -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- 扫描 BLE 在 Android 10 及以下必须要定位权限（且系统位置开关需开启） -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <!-- （可选）再补一条 COARSE 给更老的机型；FINE 已覆盖，可不写 -->
+    <!--
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="28" />
+    -->
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -13,9 +45,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- SignUpActivity 作为启动页 -->
+        <!-- SignInActivity 作为启动页 -->
         <activity
-            android:name=".SignUpActivity"
+            android:name=".SignInActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -23,10 +55,10 @@
             </intent-filter>
         </activity>
 
-        <!-- 声明 SignInActivity（非启动页，不需要 intent-filter） -->
+        <!-- SignUpActivity 不再是启动页 -->
         <activity
-            android:name=".SignInActivity"
-            android:exported="false" />
+            android:name=".SignUpActivity"
+            android:exported="false"/>
 
         <activity
             android:name=".HomeActivity"

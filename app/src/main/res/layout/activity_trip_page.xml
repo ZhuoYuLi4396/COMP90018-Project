@@ -127,5 +127,20 @@
         app:tint="@color/btn_text_on_primary"
         app:useCompatPadding="true" />
 
+    <!-- 蓝牙图标 -->
+    <ImageView
+        android:id="@+id/iv_bluetooth"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="16dp"
+        android:contentDescription="Bluetooth"
+        android:src="@drawable/ic_bluetooth_24"
+        android:scaleType="centerInside"
+        android:translationY="15dp"
+        app:layout_constraintTop_toTopOf="@id/head_bar"
+        app:layout_constraintBottom_toBottomOf="@id/head_bar"
+        app:layout_constraintEnd_toStartOf="@id/iv_bell" />
+
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

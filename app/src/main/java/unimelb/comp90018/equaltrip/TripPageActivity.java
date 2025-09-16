@@ -1,4 +1,5 @@
 package unimelb.comp90018.equaltrip;
+
 // Author: Jinglin Lei
 // SignUp Function
 //Date: 2025-09-05
@@ -10,14 +11,22 @@ package unimelb.comp90018.equaltrip;
 // But user D will not receive any trip card(Function 1).
 // Date: 2025-09-14
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.SoundEffectConstants;
+import android.widget.ImageView;
+import android.widget.Toast;
+
+import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -26,7 +35,6 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
@@ -47,6 +55,8 @@ public class TripPageActivity extends AppCompatActivity {
     private TripAdapter adapter;
     private boolean suppressNav = false;
 
+    // ====== 新增：蓝牙权限请求码 ======
+    private static final int REQ_BLE_S_BROADCAST = 1001;
 
     // 1) 两个监听的引用，便于 onStop() 解绑
     private ListenerRegistration ownerReg;
@@ -89,57 +99,7 @@ public class TripPageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_trip_page);
         setupBottomNav();
-        //setContentView(R.layout.activity_trip_page);
 
-        // --- Bottom nav ---
-//        bottom = findViewById(R.id.bottom_nav);
-//        if (bottom != null) {
-//            bottom.setSelectedItemId(R.id.nav_trips);
-//            bottom.setOnItemSelectedListener(item -> {
-//                int id = item.getItemId();
-//                if (id == R.id.nav_trips) return true; // already here
-//                if (id == R.id.nav_home) {
-//                    startActivity(new Intent(this, HomeActivity.class)
-//                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
-//                    overridePendingTransition(0, 0);
-//                    return true;
-//                }
-//                if (id == R.id.nav_profile) {
-//                    startActivity(new Intent(this, ProfileActivity.class)
-//                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
-//                    overridePendingTransition(0, 0);
-//                    return true;
-//                }
-//                return false;
-//            });
-//            bottom.setOnItemReselectedListener(item -> { /* no-op */ });
-//        }
-
-//        // --- List & FAB ---
-//        rvTrips = findViewById(R.id.rv_trips);
-//        fabAdd = findViewById(R.id.fab_add_trip);
-//
-//        // 可选：显式开启该 View 的点击音效（通常默认就是 true）
-//        fabAdd.setSoundEffectsEnabled(true);
-//
-//
-//        rvTrips.setLayoutManager(new LinearLayoutManager(this));
-//        adapter = new TripAdapter(trips, t -> {
-//            Intent i = new Intent(this, TripDetailActivity.class);
-//            i.putExtra("tripId", t.id);
-//            startActivity(i);
-//        });
-//        rvTrips.setAdapter(adapter);
-//
-//        fabAdd.setOnClickListener(v -> {
-//
-//            v.playSoundEffect(SoundEffectConstants.CLICK); // ✅ 播放系统点击音
-//            Intent i = new Intent(this, AddTripActivity.class);
-//            startActivity(i);
-//        });
-//
-//        // Firebase
-//        db = FirebaseFirestore.getInstance();
         // --- List & FAB ---
         rvTrips = findViewById(R.id.rv_trips);
         fabAdd = findViewById(R.id.fab_add_trip);
@@ -158,7 +118,61 @@ public class TripPageActivity extends AppCompatActivity {
             startActivity(new Intent(this, AddTripActivity.class));
         });
 
+        // ====== 新增：右上角蓝牙图标接“广播我的UID” ======
+        ImageView ivBluetooth = findViewById(R.id.iv_bluetooth);
+        if (ivBluetooth != null) {
+            ivBluetooth.setOnClickListener(v -> tryStartBleBroadcast());
+        }
+
         db = FirebaseFirestore.getInstance();
+    }
+
+    // ====== 新增：尝试开始广播（含动态权限） ======
+    private void tryStartBleBroadcast() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            String[] perms = new String[] {
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN
+            };
+            if (!hasAll(perms)) {
+                ActivityCompat.requestPermissions(this, perms, REQ_BLE_S_BROADCAST);
+                return;
+            }
+        } else {
+            // Android 12 以下扫描/连接配套需要定位权限（是否已授予）
+            if (!hasAll(new String[]{ Manifest.permission.ACCESS_FINE_LOCATION })) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{ Manifest.permission.ACCESS_FINE_LOCATION },
+                        REQ_BLE_S_BROADCAST);
+                return;
+            }
+        }
+        // 权限就绪：开始广播（例如 10 秒）
+        BleUidExchange.get(this).startBroadcasting(10_000);
+        Toast.makeText(this, "Broadcasting my UID…", Toast.LENGTH_SHORT).show();
+    }
+
+    // ====== 新增：权限回调，允许后再次尝试 ======
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_BLE_S_BROADCAST) {
+            if (hasAll(permissions)) {
+                tryStartBleBroadcast();
+            } else {
+                Toast.makeText(this, "Bluetooth permission required to broadcast.", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private boolean hasAll(String[] ps) {
+        for (String p : ps) {
+            if (ActivityCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -206,7 +220,6 @@ public class TripPageActivity extends AppCompatActivity {
                 .addSnapshotListener(apply);
     }
 
-
     @Override
     protected void onStop() {
         super.onStop();
@@ -214,6 +227,12 @@ public class TripPageActivity extends AppCompatActivity {
         if (invitedReg != null) { invitedReg.remove(); invitedReg = null; }
     }
 
+    // ====== 新增：释放 BLE 资源，避免 “Call requires permission …” 报警/泄漏 ======
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        BleUidExchange.get(this).onDestroy();
+    }
 
     @Override protected void onResume() {
         super.onResume();
@@ -224,6 +243,7 @@ public class TripPageActivity extends AppCompatActivity {
             bottom.post(() -> suppressNav = false);
         }
     }
+
     @Override protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         // if (requestCode == 1001 && resultCode == RESULT_OK) fetchTripsOnce();
