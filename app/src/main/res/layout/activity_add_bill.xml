@@ -1,336 +1,565 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:orientation="vertical"
+    android:background="#F8F8F8">
 
-    <LinearLayout
+    <!-- Header -->
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="56dp"
+        android:background="#2196F3"
+        android:elevation="4dp">
 
-        <!-- Header -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp">
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_revert"
+            app:tint="#666666" />
 
-            <ImageButton
-                android:id="@+id/btn_back"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"
-                android:src="@android:drawable/ic_menu_revert" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="Create Bill"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-        </RelativeLayout>
-
-        <!-- Bill Name -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Bill Name *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
+            android:layout_centerInParent="true"
+            android:text="Add Bill"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
 
-        <EditText
-            android:id="@+id/et_bill_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:hint="e.g. Lunch at Italian restaurant"
-            android:padding="12dp"
-            android:textSize="14sp" />
-
-        <!-- Merchant -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Merchant *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/et_merchant"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:hint="Pizzeria"
-            android:padding="12dp"
-            android:textSize="14sp" />
-
-        <!-- Location -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Location *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="8dp"
-                android:src="@android:drawable/ic_menu_mylocation" />
+            <!-- Bill Name -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bill Name *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
 
             <EditText
-                android:id="@+id/et_location"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:background="@android:drawable/edit_text"
-                android:hint="362 Little Bourke St"
-                android:padding="12dp"
-                android:textSize="14sp" />
-        </LinearLayout>
+                android:id="@+id/et_bill_name"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:hint="e.g. Lunch at Italian restaurant"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textSize="16sp"
+                android:layout_marginBottom="16dp" />
 
-        <!-- Date -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Date *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
-
-        <LinearLayout
-            android:id="@+id/layout_date"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:clickable="true"
-            android:focusable="true"
-            android:orientation="horizontal"
-            android:padding="12dp">
-
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="8dp"
-                android:src="@android:drawable/ic_menu_today" />
-
+            <!-- Merchant -->
             <TextView
-                android:id="@+id/tv_date"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_weight="1"
-                android:text="2025-08-25"
-                android:textSize="14sp" />
-        </LinearLayout>
+                android:text="Merchant *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
 
-        <!-- Receipt -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Receipt"
-            android:textColor="#000000"
-            android:textSize="14sp" />
+            <EditText
+                android:id="@+id/et_merchant"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:hint="Pizzeria"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textSize="16sp"
+                android:layout_marginBottom="16dp" />
 
-        <LinearLayout
-            android:id="@+id/layout_receipt"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:clickable="true"
-            android:focusable="true"
-            android:orientation="horizontal"
-            android:padding="12dp">
-
+            <!-- Location -->
             <TextView
-                android:id="@+id/tv_receipt"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_weight="1"
-                android:hint="Take a photo of the receipt"
-                android:textSize="14sp" />
+                android:text="Location *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
 
-            <ImageButton
-                android:id="@+id/btn_receipt_gallery"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginEnd="8dp"
-                android:background="?attr/selectableItemBackground"
-                android:scaleType="centerInside"
-                android:src="@android:drawable/ic_menu_gallery" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="16dp">
 
-            <ImageButton
-                android:id="@+id/btn_receipt_camera"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?attr/selectableItemBackground"
-                android:scaleType="centerInside"
-                android:src="@android:drawable/ic_menu_camera" />
-        </LinearLayout>
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_location"
+                    app:tint="#666666" />
 
-        <!-- Amount -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Amount *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
+                <EditText
+                    android:id="@+id/et_location"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="362 Little Bourke St"
+                    android:paddingStart="12dp"
+                    android:textSize="16sp" />
+            </LinearLayout>
 
-        <EditText
-            android:id="@+id/et_amount"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:hint="0.00"
-            android:inputType="numberDecimal"
-            android:padding="12dp"
-            android:textSize="14sp" />
-
-        <!-- Currency -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Currency *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
-
-        <Spinner
-            android:id="@+id/spinner_currency"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:padding="12dp" />
-
-        <!-- Paid by -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Paid by *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
-
-        <LinearLayout
-            android:id="@+id/layout_paid_by"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:clickable="true"
-            android:focusable="true"
-            android:orientation="horizontal"
-            android:padding="12dp">
-
+            <!-- Category -->
             <TextView
-                android:id="@+id/tv_paid_by"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_weight="1"
-                android:text="A"
-                android:textSize="14sp" />
+                android:text="Category *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
 
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/ic_menu_more" />
-        </LinearLayout>
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:layout_marginBottom="16dp">
 
-        <!-- Participants -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Participants *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
+                <LinearLayout
+                    android:id="@+id/category_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
 
-        <LinearLayout
-            android:id="@+id/layout_participants"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:background="@android:drawable/edit_text"
-            android:clickable="true"
-            android:focusable="true"
-            android:orientation="horizontal"
-            android:padding="12dp">
+                    <LinearLayout
+                        android:id="@+id/btn_dining"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="@drawable/category_selected_bg"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@drawable/ic_dining"
+                            app:tint="#FFFFFF" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Dining"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btn_transport"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="@drawable/category_unselected_bg"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@drawable/ic_transport"
+                            app:tint="#666666" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Transport"
+                            android:textColor="#666666"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btn_shopping"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="@drawable/category_unselected_bg"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@drawable/ic_shopping"
+                            app:tint="#666666" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Shopping"
+                            android:textColor="#666666"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btn_other"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:background="@drawable/category_unselected_bg"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@drawable/ic_other"
+                            app:tint="#666666" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Other"
+                            android:textColor="#666666"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- Date -->
             <TextView
-                android:id="@+id/tv_participants"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_weight="1"
-                android:text="1 selected"
-                android:textSize="14sp" />
+                android:text="Date *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
 
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/ic_menu_more" />
+            <LinearLayout
+                android:id="@+id/layout_date"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_calendar_24"
+                    android:scaleType="centerInside" />
+
+                <TextView
+                    android:id="@+id/tv_date"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingStart="12dp"
+                    android:text="2025-08-05"
+                    android:textColor="#333333"
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+            <!-- Receipt -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Receipt"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <FrameLayout
+                android:id="@+id/layout_receipt"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="16dp">
+
+                <!-- Default state (no receipt) -->
+                <LinearLayout
+                    android:id="@+id/receipt_placeholder"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:visibility="visible">
+
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:src="@drawable/ic_camera"
+                        app:tint="#999999" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Take a photo of the receipt"
+                        android:textColor="#999999"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- Receipt captured state -->
+                <RelativeLayout
+                    android:id="@+id/receipt_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="12dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/iv_receipt_preview"
+                        android:layout_width="80dp"
+                        android:layout_height="match_parent"
+                        android:layout_alignParentStart="true"
+                        android:background="#E0E0E0"
+                        android:scaleType="centerCrop" />
+
+                    <ImageButton
+                        android:id="@+id/btn_remove_receipt"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_alignTop="@id/iv_receipt_preview"
+                        android:layout_alignEnd="@id/iv_receipt_preview"
+                        android:layout_margin="-8dp"
+                        android:background="@drawable/close_button_bg"
+                        android:src="@drawable/ic_close"
+                        app:tint="#FFFFFF" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/btn_receipt_gallery"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_marginEnd="12dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_gallery"
+                            app:tint="#666666" />
+
+                        <ImageButton
+                            android:id="@+id/btn_receipt_camera"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_camera"
+                            app:tint="#666666" />
+                    </LinearLayout>
+                </RelativeLayout>
+            </FrameLayout>
+
+            <!-- Amount -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Amount *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/et_amount"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:hint="0.00"
+                android:inputType="numberDecimal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textSize="16sp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Currency -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Currency *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <Spinner
+                android:id="@+id/spinner_currency"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/spinner_bg"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Paid by -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Paid by *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:id="@+id/layout_paid_by"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/tv_paid_by"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="A"
+                    android:textColor="#333333"
+                    android:textSize="16sp" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_right"
+                    app:tint="#999999" />
+            </LinearLayout>
+
+            <!-- Participants -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Participants *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:id="@+id/layout_participants"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/rounded_edittext_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/tv_participants"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="1 selected"
+                    android:textColor="#333333"
+                    android:textSize="16sp" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_right"
+                    app:tint="#999999" />
+            </LinearLayout>
+
+            <!-- Split method -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Split method *"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/rg_split_method"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="32dp">
+
+                <RadioButton
+                    android:id="@+id/rb_equal"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/radio_button_bg"
+                    android:button="@null"
+                    android:checked="true"
+                    android:gravity="center"
+                    android:text="Equal"
+                    android:textColor="@drawable/radio_text_color"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <RadioButton
+                    android:id="@+id/rb_customize"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/radio_button_bg"
+                    android:button="@null"
+                    android:gravity="center"
+                    android:text="Customize"
+                    android:textColor="@drawable/radio_text_color"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </RadioGroup>
+
+            <!-- Add padding at bottom to prevent button overlap -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="80dp" />
         </LinearLayout>
+    </ScrollView>
 
-        <!-- Split method -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Split method *"
-            android:textColor="#000000"
-            android:textSize="14sp" />
-
-        <Spinner
-            android:id="@+id/spinner_split_method"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="24dp"
-            android:background="@android:drawable/edit_text"
-            android:padding="12dp" />
-
-        <!-- Create Bill Button -->
-        <Button
-            android:id="@+id/btn_create_bill"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#000000"
-            android:padding="16dp"
-            android:text="Create Bill"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-</ScrollView>
-
-    <!--<?xml version="1.0" encoding="utf-8"?>-->
-    <!--<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
-    <!--    android:layout_width="match_parent"-->
-    <!--    android:layout_height="match_parent">-->
-    <!--    -->
-
-    <!--</androidx.constraintlayout.widget.ConstraintLayout>-->
+    <!-- Create Bill Button (Fixed at bottom) -->
+    <Button
+        android:id="@+id/btn_create_bill"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_margin="16dp"
+        android:background="@drawable/button_bg"
+        android:text="Create Bill"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+</LinearLayout>
