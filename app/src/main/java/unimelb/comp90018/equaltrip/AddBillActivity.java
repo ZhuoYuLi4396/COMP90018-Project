@@ -4,22 +4,31 @@ import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.*;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class AddBillActivity extends AppCompatActivity {
     private EditText etBillName, etMerchant, etLocation, etAmount;
-    private TextView tvDate, tvPaidBy, tvParticipants;
+    private TextView tvDate, tvPaidBy, tvParticipants, tvTotalSplit;
     private Spinner spinnerCurrency;
     private Button btnCreateBill;
     private ImageButton btnReceiptCamera, btnReceiptGallery, btnRemoveReceipt;
     private RadioButton rbEqual, rbCustomize;
     private RadioGroup rgSplitMethod;
+
+    // Split amount views
+    private LinearLayout layoutSplitDetails;
+    private RecyclerView rvSplitAmounts;
+    private SplitAmountAdapter splitAdapter;
 
     // Category buttons
     private LinearLayout btnDining, btnTransport, btnShopping, btnOther;
@@ -35,8 +44,10 @@ public class AddBillActivity extends AppCompatActivity {
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     private String selectedPayer = "A"; // Default payer
     private ArrayList<String> selectedParticipants = new ArrayList<>();
+    private ArrayList<ParticipantSplit> participantSplits = new ArrayList<>();
     private boolean hasReceipt = false;
     private Bitmap receiptBitmap = null;
+    private double totalAmount = 0.0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +58,7 @@ public class AddBillActivity extends AppCompatActivity {
         setupListeners();
         setupSpinners();
         setupCategoryButtons();
+        setupSplitRecyclerView();
 
         // Set default date
         tvDate.setText(dateFormat.format(calendar.getTime()));
@@ -63,6 +75,7 @@ public class AddBillActivity extends AppCompatActivity {
         tvDate = findViewById(R.id.tv_date);
         tvPaidBy = findViewById(R.id.tv_paid_by);
         tvParticipants = findViewById(R.id.tv_participants);
+        tvTotalSplit = findViewById(R.id.tv_total_split);
 
         // Spinners
         spinnerCurrency = findViewById(R.id.spinner_currency);
@@ -90,9 +103,25 @@ public class AddBillActivity extends AppCompatActivity {
         rbCustomize = findViewById(R.id.rb_customize);
         rgSplitMethod = findViewById(R.id.rg_split_method);
 
+        // Split amount views
+        layoutSplitDetails = findViewById(R.id.layout_split_details);
+        rvSplitAmounts = findViewById(R.id.rv_split_amounts);
+
         // Back button
         ImageButton btnBack = findViewById(R.id.btn_back);
         btnBack.setOnClickListener(v -> finish());
+    }
+
+    private void setupSplitRecyclerView() {
+        rvSplitAmounts.setLayoutManager(new LinearLayoutManager(this));
+        splitAdapter = new SplitAmountAdapter(participantSplits, new SplitAmountAdapter.OnAmountChangeListener() {
+            @Override
+            public void onAmountChanged(String participant, double newAmount) {
+                updateParticipantAmount(participant, newAmount);
+                updateTotalDisplay();
+            }
+        });
+        rvSplitAmounts.setAdapter(splitAdapter);
     }
 
     private void setupListeners() {
@@ -111,10 +140,27 @@ public class AddBillActivity extends AppCompatActivity {
         btnReceiptGallery.setOnClickListener(v -> openGallery());
         btnRemoveReceipt.setOnClickListener(v -> removeReceipt());
 
-        // Amount input validation
-        etAmount.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus && !etAmount.getText().toString().isEmpty()) {
-                validateAmount();
+        // Amount input validation and split calculation
+        etAmount.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (!s.toString().isEmpty()) {
+                    try {
+                        totalAmount = Double.parseDouble(s.toString());
+                        updateSplitAmounts();
+                    } catch (NumberFormatException e) {
+                        totalAmount = 0.0;
+                    }
+                } else {
+                    totalAmount = 0.0;
+                    updateSplitAmounts();
+                }
             }
         });
 
@@ -134,14 +180,72 @@ public class AddBillActivity extends AppCompatActivity {
 
         // Split method radio buttons
         rgSplitMethod.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == R.id.rb_customize) {
-                // Handle customize split method
-                Toast.makeText(this, "Custom split selected", Toast.LENGTH_SHORT).show();
-            }
+            boolean isCustomize = checkedId == R.id.rb_customize;
+            splitAdapter.setEditableMode(isCustomize);
+            updateSplitAmounts();
         });
 
         // Create Bill button
         btnCreateBill.setOnClickListener(v -> createBill());
+    }
+
+    private void updateSplitAmounts() {
+        if (selectedParticipants.isEmpty()) {
+            layoutSplitDetails.setVisibility(View.GONE);
+            return;
+        }
+
+        layoutSplitDetails.setVisibility(View.VISIBLE);
+
+        participantSplits.clear();
+
+        if (rbEqual.isChecked()) {
+            // Equal split
+            double amountPerPerson = selectedParticipants.isEmpty() ? 0 : totalAmount / selectedParticipants.size();
+            for (String participant : selectedParticipants) {
+                participantSplits.add(new ParticipantSplit(participant, amountPerPerson));
+            }
+        } else {
+            // Customize split - initialize with equal amounts
+            double amountPerPerson = selectedParticipants.isEmpty() ? 0 : totalAmount / selectedParticipants.size();
+            for (String participant : selectedParticipants) {
+                participantSplits.add(new ParticipantSplit(participant, amountPerPerson));
+            }
+        }
+
+        splitAdapter.updateData(participantSplits);
+        updateTotalDisplay();
+    }
+
+    private void updateParticipantAmount(String participant, double newAmount) {
+        for (ParticipantSplit split : participantSplits) {
+            if (split.getName().equals(participant)) {
+                split.setAmount(newAmount);
+                break;
+            }
+        }
+    }
+
+    private void updateTotalDisplay() {
+        double splitTotal = 0;
+        for (ParticipantSplit split : participantSplits) {
+            splitTotal += split.getAmount();
+        }
+
+        String currency = spinnerCurrency.getSelectedItem() != null ?
+                spinnerCurrency.getSelectedItem().toString().substring(0, 1) : "$";
+
+        tvTotalSplit.setText(String.format(Locale.getDefault(), "Total: %s %.2f", currency, splitTotal));
+
+        // Show warning if totals don't match in customize mode
+        if (rbCustomize.isChecked() && Math.abs(splitTotal - totalAmount) > 0.01) {
+            tvTotalSplit.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
+            tvTotalSplit.setText(String.format(Locale.getDefault(),
+                    "Total: %s %.2f (Should be %s %.2f)",
+                    currency, splitTotal, currency, totalAmount));
+        } else {
+            tvTotalSplit.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+        }
     }
 
     private void setupCategoryButtons() {
@@ -315,8 +419,34 @@ public class AddBillActivity extends AppCompatActivity {
             return;
         }
 
+        // Check if customize split totals match
+        if (rbCustomize.isChecked()) {
+            double splitTotal = 0;
+            for (ParticipantSplit split : participantSplits) {
+                splitTotal += split.getAmount();
+            }
+
+            if (Math.abs(splitTotal - totalAmount) > 0.01) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Split Amount Mismatch")
+                        .setMessage(String.format(Locale.getDefault(),
+                                "The total split amount (%.2f) doesn't match the bill amount (%.2f). Please adjust the individual amounts.",
+                                splitTotal, totalAmount))
+                        .setPositiveButton("OK", null)
+                        .show();
+                return;
+            }
+        }
+
         // Get split method
         String splitMethod = rbEqual.isChecked() ? "Equal" : "Customize";
+
+        // Build split details
+        StringBuilder splitDetails = new StringBuilder();
+        for (ParticipantSplit split : participantSplits) {
+            splitDetails.append(String.format(Locale.getDefault(),
+                    "\n%s: %.2f", split.getName(), split.getAmount()));
+        }
 
         // Create bill logic here
         String message = "Bill created successfully!\n" +
@@ -326,7 +456,8 @@ public class AddBillActivity extends AppCompatActivity {
                 "Amount: " + spinnerCurrency.getSelectedItem().toString().substring(0, 1) +
                 etAmount.getText().toString() + "\n" +
                 "Paid by: " + selectedPayer + "\n" +
-                "Split: " + splitMethod;
+                "Split: " + splitMethod +
+                "\n\nSplit Details:" + splitDetails.toString();
 
         new AlertDialog.Builder(this)
                 .setTitle("Success")
@@ -356,8 +487,10 @@ public class AddBillActivity extends AppCompatActivity {
                     } else {
                         tvParticipants.setText(selectedParticipants.size() + " selected");
                     }
+                    updateSplitAmounts();
                 } else {
                     tvParticipants.setText("None selected");
+                    layoutSplitDetails.setVisibility(View.GONE);
                 }
             }
         }

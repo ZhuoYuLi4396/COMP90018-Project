@@ -486,7 +486,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="1 selected"
+                    android:text="None selected"
                     android:textColor="#333333"
                     android:textSize="16sp" />
 
@@ -511,7 +511,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="32dp">
+                android:layout_marginBottom="16dp">
 
                 <RadioButton
                     android:id="@+id/rb_equal"
@@ -542,6 +542,49 @@
                     android:textSize="14sp"
                     android:textStyle="bold" />
             </RadioGroup>
+
+            <!-- Split Details Section -->
+            <LinearLayout
+                android:id="@+id/layout_split_details"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:background="@drawable/rounded_edittext_bg"
+                android:padding="12dp"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Split Details"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_split_amounts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E0E0E0"
+                    android:layout_marginVertical="8dp" />
+
+                <TextView
+                    android:id="@+id/tv_total_split"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:text="Total: $0.00"
+                    android:textColor="#333333"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <!-- Add padding at bottom to prevent button overlap -->
             <View
