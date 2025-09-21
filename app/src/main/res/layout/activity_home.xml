@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@android:color/white">
 
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/contentContainer"
         android:layout_width="0dp"
@@ -17,6 +16,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <!-- 顶部标题 -->
         <TextView
             android:id="@+id/tvBrand"
             android:layout_width="wrap_content"
@@ -40,7 +40,7 @@
             app:layout_constraintBottom_toBottomOf="@id/tvBrand"
             app:layout_constraintEnd_toEndOf="parent"/>
 
-        <!-- Greeting + Username -->
+        <!-- Hi, Username -->
         <TextView
             android:id="@+id/tvHi"
             android:layout_width="wrap_content"
@@ -125,7 +125,7 @@
                 android:textColor="@android:color/black"/>
         </LinearLayout>
 
-        <!-- map -->
+        <!-- 只保留：交互式地图 -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mapCard"
             android:layout_width="0dp"
@@ -138,8 +138,8 @@
             android:layout_marginEnd="8dp"
             android:layout_marginTop="18dp"
             android:layout_marginBottom="18dp"
-            app:cardUseCompatPadding="true"
             app:cardCornerRadius="16dp"
+            app:cardUseCompatPadding="true"
             app:strokeColor="#D0D0D0"
             app:strokeWidth="1dp">
 
@@ -150,7 +150,7 @@
                 android:layout_height="match_parent"/>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- two buttons -->
+        <!-- 底部两个按钮 -->
         <LinearLayout
             android:id="@+id/rowButtons"
             android:layout_width="0dp"
@@ -192,7 +192,6 @@
                 android:textAllCaps="false"
                 android:textSize="16sp"
                 app:cornerRadius="18dp"
-
                 app:iconSize="20dp"
                 app:iconGravity="textStart"
                 app:iconPadding="12dp"
@@ -211,11 +210,9 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-
         app:menu="@menu/menu_bottom_nav"
         app:itemIconTint="@drawable/nav_item_color"
         app:itemTextColor="@drawable/nav_item_color"
-
         android:paddingTop="5dp"
         android:paddingBottom="5dp"
         android:layout_marginBottom="0dp"

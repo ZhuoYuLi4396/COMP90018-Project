@@ -8,6 +8,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -23,10 +24,14 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 public class HomeActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+    private static final int RC_LOCATION = 201;
+
+    // 顶部信息
     private TextView tvUsername, tvOngoingTripsNum, tvUnpaidBillsNum;
+
     private FirebaseAuth mAuth;
 
-    // Map
+    // 地图
     private GoogleMap gmap;
 
     @Override
@@ -34,11 +39,12 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        tvUsername = findViewById(R.id.tvUsername);
+        // ===== 绑定视图 =====
+        tvUsername        = findViewById(R.id.tvUsername);
         tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
-        tvUnpaidBillsNum = findViewById(R.id.tvUnpaidBillsNum);
+        tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
 
-        // ===== Firebase Auth & 显示数据 =====
+        // ===== Firebase Auth & 文案 =====
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
@@ -47,7 +53,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
-        // 默认值（随后被 Firestore 覆盖）
         tvOngoingTripsNum.setText(" 2 ");
         tvUnpaidBillsNum.setText("6 ");
 
@@ -68,10 +73,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (doc.exists()) {
                         String userId = doc.getString("userId");
                         if (userId != null && !userId.isEmpty()) tvUsername.setText(userId);
-
                         Long ongoing = doc.getLong("ongoingTrips");
                         if (ongoing != null) tvOngoingTripsNum.setText(" " + ongoing + " ");
-
                         Long unpaid = doc.getLong("unpaidBills");
                         if (unpaid != null) tvUnpaidBillsNum.setText(String.valueOf(unpaid));
                     }
@@ -79,7 +82,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Failed to load profile.", Toast.LENGTH_SHORT).show());
 
-        // ===== Map 初始化 =====
+        // ===== 地图初始化 =====
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapFragment);
         if (mapFragment != null) {
@@ -88,7 +91,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             Toast.makeText(this, "Map container (mapFragment) not found in layout.", Toast.LENGTH_SHORT).show();
         }
 
-        // ===== BottomNav：Home -> Profile / Trips =====
+        // ===== BottomNav =====
         BottomNavigationView bottom = findViewById(R.id.bottomNav);
         if (bottom != null) {
             bottom.setSelectedItemId(R.id.nav_home);
@@ -112,23 +115,65 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    // ===== OnMapReadyCallback =====
+    // ===== 地图就绪 =====
     @Override
     public void onMapReady(GoogleMap map) {
         gmap = map;
 
-        // basic UI
+        // 基本 UI
         gmap.getUiSettings().setZoomControlsEnabled(true);
         gmap.getUiSettings().setMapToolbarEnabled(false);
+        gmap.getUiSettings().setCompassEnabled(true);
 
-        // default cam Melbourne
+        // 默认定位：Melbourne
         LatLng melbourne = new LatLng(-37.8136, 144.9631);
         gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(melbourne, 12f));
+        gmap.addMarker(new MarkerOptions().position(melbourne).title("Melbourne"));
 
-        // three markers
-        gmap.addMarker(new MarkerOptions().position(melbourne).title("City"));
-        gmap.addMarker(new MarkerOptions().position(new LatLng(-37.81, 144.99)).title("Trip A"));
-        gmap.addMarker(new MarkerOptions().position(new LatLng(-37.83, 144.95)).title("Trip B"));
+        // 点击地图落点
+        gmap.setOnMapClickListener(latLng -> {
+            gmap.clear();
+            gmap.addMarker(new MarkerOptions().position(latLng)
+                    .title(String.format("Lat: %.5f, Lng: %.5f", latLng.latitude, latLng.longitude)));
+            gmap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+        });
 
+        // 蓝点（需权限）
+        enableMyLocationIfGranted();
+    }
+
+    // ===== 定位权限 & 蓝点 =====
+    private void enableMyLocationIfGranted() {
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+
+        if (fine || coarse) {
+            actuallyEnableMyLocation();
+        } else {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    RC_LOCATION
+            );
+        }
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private void actuallyEnableMyLocation() {
+        if (gmap != null) gmap.setMyLocationEnabled(true);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == RC_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                actuallyEnableMyLocation();
+            } else {
+                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }
