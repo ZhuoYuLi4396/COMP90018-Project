@@ -1,0 +1,12 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.EqualTrip" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/et_primary</item>
+        <!-- 错误态颜色（TextInputLayout.setError 会用到） -->
+        <item name="colorError">@color/et_error</item>
+        <item name="colorOnError">@color/white</item>
+
+    </style>
+
+    <style name="Theme.EqualTrip" parent="Base.Theme.EqualTrip"/>
+</resources>

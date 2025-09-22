@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Author: Jinglin Lei
+  Assignment: SignUp Layout
+  Date: 2025-09-04
+-->
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_notifications"
+        android:title="@string/notifications"
+        android:icon="@drawable/ic_bell_24"
+        app:showAsAction="always"/>
+</menu>

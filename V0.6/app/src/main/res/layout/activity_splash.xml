@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/splash_blue">
+
+    <LinearLayout
+        android:id="@+id/pills"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="120dp">
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="64dp"
+            android:background="@drawable/white_pill"
+            android:layout_marginEnd="16dp"/>
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="64dp"
+            android:background="@drawable/white_pill"/>
+    </LinearLayout>
+
+    <!-- 中间的 triP 字样（临时当 LOGO；可换成 ImageView 放你的图片 LOGO） -->
+    <ImageView
+        android:id="@+id/logoImg"
+        android:layout_width="240dp"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:src="@drawable/equaltrip_logo"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintTop_toBottomOf="@id/pills"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
+
+    <!-- 标语 -->
+    <TextView
+        android:id="@+id/tagline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/slogan_trip_splitting"
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:fontFamily="@font/inter"
+        app:layout_constraintTop_toBottomOf="@id/logoImg"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+
+    <!-- 声明 BLE 能力；如果想允许非 BLE 设备也能安装，把 required 改为 false -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <!-- ===== Android 12+ (API 31+) 的蓝牙运行时权限 ===== -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- ===== 兼容 Android 10 及以下 (API <=30) 的旧权限 ===== -->
+    <!-- 旧版蓝牙权限（31+ 已废弃，但在旧系统仍需要），用 maxSdkVersion 限定只在旧系统请求 -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- 扫描 BLE 在 Android 10 及以下必须要定位权限（且系统位置开关需开启） -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <!-- （可选）再补一条 COARSE 给更老的机型；FINE 已覆盖，可不写 -->
+    <!--
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="28" />
+    -->
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.EqualTrip">
+
+
+        <!-- 启动页 -->
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.EqualTrip.Splash">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+
+        <!-- 账号相关 -->
+        <activity
+            android:name=".SignUpActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SignInActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EqualTrip" />
+
+
+        <!-- 首页（可选：singleTop 防止重复实例） -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTask"/>
+
+        <activity android:name=".TripPageActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
+
+
+        <!-- ✅ 新增：Profile 页面（修复无法跳转问题） -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <activity
+            android:name=".AlgorithmTestActivity"
+            android:exported="true" />
+
+
+        <activity android:name=".TripDetailActivity" />
+        <activity android:name=".AddTripActivity"
+            android:windowSoftInputMode="adjustResize"
+            />
+
+        <!-- Payer Selection Activity -->
+        <activity
+            android:name=".PayerSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
+        </activity>
+
+
+        <!-- Participants Selection Activity -->
+        <activity
+            android:name=".ParticipantsSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
+        </activity>
+
+        <activity
+            android:name=".AddBillActivity"
+            android:exported="false" />
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
+    </application>
+
+</manifest>

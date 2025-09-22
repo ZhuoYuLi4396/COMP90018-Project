@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ====== 文本外观（保持你的设置） ====== -->
+    <style name="TextAppearance.EqualTrip.Title" parent="@android:style/TextAppearance">
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">700</item>
+        <item name="android:textSize">48sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.EqualTrip.Subtitle" parent="@android:style/TextAppearance">
+        <item name="android:textSize">19sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <style name="TextAppearance.EqualTrip.Label" parent="@android:style/TextAppearance">
+        <item name="android:textSize">19sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <style name="TextAppearance.EqualTrip.Terms" parent="@android:style/TextAppearance">
+        <item name="android:textSize">15sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <style name="TextAppearance.EqualTrip.Footer" parent="@android:style/TextAppearance">
+        <item name="android:textSize">15sp</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- 顶部字段标签 -->
+    <style name="TextAppearance.EqualTrip.FieldLabel" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">#000000</item>
+        <item name="android:textStyle">normal</item>
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- ====== 输入框（关键：加入错误态配置） ====== -->
+    <!-- 这是包裹控件 TextInputLayout 的样式 -->
+    <style name="EqualTrip.TextInput.Outlined" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <!-- 盒子外观 -->
+        <item name="boxBackgroundMode">outline</item>
+        <item name="boxBackgroundColor">@color/field_fill</item>          <!-- 如 #F5F5F5 -->
+        <item name="boxStrokeColor">@color/field_stroke</item>            <!-- 如 #DDDDDD -->
+        <item name="boxStrokeWidth">2dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+
+        <!-- 圆角 -->
+        <item name="boxCornerRadiusTopStart">@dimen/field_corner</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/field_corner</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/field_corner</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/field_corner</item>
+
+        <!-- 提示/辅助文字 -->
+        <item name="hintEnabled">false</item>           <!-- 你用外部 label，因此关掉内部 hint -->
+        <item name="helperTextTextColor">@color/text_secondary</item>
+
+        <!-- ✅ 错误态（最重要） -->
+        <item name="errorEnabled">true</item>
+        <item name="boxStrokeErrorColor">?attr/colorError</item>
+        <item name="errorTextColor">?attr/colorError</item>
+        <item name="counterOverflowTextColor">?attr/colorError</item>
+    </style>
+
+    <!-- （可选）如果想统一 EditText 内文字的外观，可额外给 EditText 一个样式 -->
+    <style name="EqualTrip.TextInput.EditText" parent="TextAppearance.Material3.BodyLarge">
+        <item name="fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">400</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+    </style>
+
+    <!-- ====== 主按钮样式 ====== -->
+    <style name="Widget.EqualTrip.Button.Primary" parent="Widget.Material3.Button">
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textFontWeight">600</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/btn_text_on_primary</item>
+        <item name="backgroundTint">@color/btn_primary</item>
+        <item name="cornerRadius">@dimen/btn_corner</item>
+        <item name="android:layout_height">48dp</item>
+    </style>
+    <!-- ====== Splash ====== -->
+    <style name="Theme.EqualTrip.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_blue</item>
+        <!-- 这里可改为你的 LOGO（drawable 或 mipmap）；我用现成的前景图占位 -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.EqualTrip</item>
+    </style>
+
+    <style name="ToolbarTitleText" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
+        <item name="android:textSize">32sp</item>   <!-- 修改字号 -->
+        <item name="android:textStyle">bold</item> <!-- 可选：加粗 -->
+    </style>
+
+    <style name="BottomNavText" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">15sp</item>
+        <item name="android:lineSpacingExtra">20sp</item>    <!-- 文字更靠近图标 -->
+    </style>
+
+
+
+
+</resources>
+
