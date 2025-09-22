@@ -1,5 +1,6 @@
 package unimelb.comp90018.equaltrip;
 
+
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -34,10 +35,12 @@ public class ProfileActivity extends AppCompatActivity {
             "AUD Australian Dollar","USD United States Dollar","EUR Euro","CNY Chinese Yuan"
     };
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
+
 
         swLocation = findViewById(R.id.swLocation);
         swNotification = findViewById(R.id.swNotification);
@@ -166,4 +169,5 @@ public class ProfileActivity extends AppCompatActivity {
             if (!granted) toast("Camera permission denied");
         }
     }
+
 }

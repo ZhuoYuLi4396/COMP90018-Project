@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:background="@android:color/white">
 
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/contentContainer"
         android:layout_width="0dp"
@@ -27,6 +28,7 @@
             android:textColor="@color/splash_blue"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"/>
+
 
         <ImageButton
             android:id="@+id/btnBell"
@@ -98,6 +100,7 @@
                 android:textColor="@android:color/black"/>
         </LinearLayout>
 
+
         <!-- 6 unpaid bills -->
         <LinearLayout
             android:id="@+id/rowBills"
@@ -124,6 +127,10 @@
                 android:textSize="18sp"
                 android:textColor="@android:color/black"/>
         </LinearLayout>
+
+
+
+<!--</androidx.constraintlayout.widget.ConstraintLayout>-->
 
         <!-- 只保留：交互式地图 -->
         <com.google.android.material.card.MaterialCardView
@@ -225,3 +232,4 @@
         app:paddingLeftSystemWindowInsets="false"
         app:paddingRightSystemWindowInsets="false"/>
 </androidx.constraintlayout.widget.ConstraintLayout>
+

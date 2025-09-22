@@ -3,6 +3,7 @@ plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     // alias(libs.plugins.google.services) // Jinglin 8.18.2025
+
 }
 //
 android {
@@ -11,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "unimelb.comp90018.equaltrip"
-        minSdk = 33
+        minSdk = 29
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -44,6 +45,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.navigation.fragment)
+    implementation(libs.navigation.ui)
     testImplementation(libs.junit)
     implementation("com.google.android.material:material:1.12.0")
     androidTestImplementation(libs.ext.junit)
@@ -59,11 +62,19 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")        // For authentication
     implementation("com.google.firebase:firebase-firestore")   // For database
+
+
+    implementation ("androidx.navigation:navigation-fragment:2.7.7") // Navigation
+    implementation ("androidx.navigation:navigation-ui:2.7.7") // Navigation
+
+
+
     implementation("com.google.android.gms:play-services-maps:18.2.0") // Google map
     //Geocoding API
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
 }
 
 
