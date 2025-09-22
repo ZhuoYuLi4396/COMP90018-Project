@@ -37,7 +37,7 @@
     -->
 
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    
+
 
 
     <application
@@ -81,18 +81,11 @@
         <activity
             android:name=".HomeActivity"
             android:exported="false"
-
             android:launchMode="singleTask"/>
 
         <activity android:name=".TripPageActivity"
             android:exported="false"
             android:launchMode="singleTask" />
-
-        <activity android:name=".ProfileActivity"
-            android:exported="false"
-            android:launchMode="singleTask" />
-
-            android:launchMode="singleTop" />
 
 
         <!-- ✅ 新增：Profile 页面（修复无法跳转问题） -->
@@ -110,9 +103,6 @@
         <activity android:name=".AddTripActivity"
             android:windowSoftInputMode="adjustResize"
             />
-
-    </application>
-</manifest>
 
         <!-- Payer Selection Activity -->
         <activity
