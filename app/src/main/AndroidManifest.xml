@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:allowBackup="true"
@@ -13,35 +16,48 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- SignUpActivity 作为启动页 -->
+        <!-- 启动页 -->
         <activity
-            android:name=".SignUpActivity"
-            android:exported="true">
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.EqualTrip.Splash">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- 声明 SignInActivity（非启动页，不需要 intent-filter） -->
+        <!-- 账号相关 -->
+        <activity
+            android:name=".SignUpActivity"
+            android:exported="false" />
         <activity
             android:name=".SignInActivity"
             android:exported="false" />
-
-        <activity
-            android:name=".HomeActivity"
-            android:exported="false" />
-
         <activity
             android:name=".ForgotPasswordActivity"
             android:exported="false"
             android:theme="@style/Theme.EqualTrip" />
 
+        <!-- 首页（可选：singleTop 防止重复实例） -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <!-- ✅ 新增：Profile 页面（修复无法跳转问题） -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
         <activity
             android:name=".AlgorithmTestActivity"
             android:exported="true" />
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
     </application>
+
 </manifest>
-
-
