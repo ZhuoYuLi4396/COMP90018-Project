@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -110,6 +111,12 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return false;
             });
         }
+
+        Button btnAddBill = findViewById(R.id.btnAddBill);
+        btnAddBill.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, AddBillActivity.class);
+            startActivity(intent);
+        });
     }
 
     @Override
