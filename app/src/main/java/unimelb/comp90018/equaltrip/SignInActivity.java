@@ -103,7 +103,7 @@ public class SignInActivity extends AppCompatActivity {
                         }
 
                         // Jump to the homepage
-                        Intent intent = new Intent(SignInActivity.this, AddBillActivity.class);
+                        Intent intent = new Intent(SignInActivity.this, HomeActivity.class);
                         startActivity(intent);
                         finish(); // 关闭当前页面，防止返回
                     } else {
