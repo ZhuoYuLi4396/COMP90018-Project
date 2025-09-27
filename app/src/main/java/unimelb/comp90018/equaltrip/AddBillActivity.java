@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.*;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,6 +16,23 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
+// === Receipts (multi-images) ===
+import android.net.Uri;
+import android.os.Environment;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.FileProvider;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 public class AddBillActivity extends AppCompatActivity {
     private EditText etBillName, etMerchant, etLocation, etAmount;
@@ -48,6 +66,17 @@ public class AddBillActivity extends AppCompatActivity {
     private boolean hasReceipt = false;
     private Bitmap receiptBitmap = null;
     private double totalAmount = 0.0;
+
+    // === Receipts (multi-images) ===
+    private RecyclerView rvReceipts;
+    private ReceiptsAdapter receiptsAdapter;
+
+    // 改成多图：用列表保存所有照片的 Uri
+    private final List<Uri> receiptUris = new ArrayList<>();
+
+    // 拍照用的临时输出 Uri（启动相机前生成）
+    private Uri pendingCameraOutputUri = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,7 +113,7 @@ public class AddBillActivity extends AppCompatActivity {
         btnCreateBill = findViewById(R.id.btn_create_bill);
         btnReceiptCamera = findViewById(R.id.btn_receipt_camera);
         btnReceiptGallery = findViewById(R.id.btn_receipt_gallery);
-        btnRemoveReceipt = findViewById(R.id.btn_remove_receipt);
+        //btnRemoveReceipt = findViewById(R.id.btn_remove_receipt);
 
         // Category buttons
         btnDining = findViewById(R.id.btn_dining);
@@ -95,7 +124,7 @@ public class AddBillActivity extends AppCompatActivity {
         // Receipt views
         receiptPlaceholder = findViewById(R.id.receipt_placeholder);
         receiptPreview = findViewById(R.id.receipt_preview);
-        ivReceiptPreview = findViewById(R.id.iv_receipt_preview);
+        //ivReceiptPreview = findViewById(R.id.iv_receipt_preview);
         layoutReceipt = findViewById(R.id.layout_receipt);
 
         // Split method radio buttons
@@ -110,6 +139,21 @@ public class AddBillActivity extends AppCompatActivity {
         // Back button
         ImageButton btnBack = findViewById(R.id.btn_back);
         btnBack.setOnClickListener(v -> finish());
+
+        // Receipt views（你原来就有）
+        receiptPlaceholder = findViewById(R.id.receipt_placeholder);
+        receiptPreview = findViewById(R.id.receipt_preview);
+        layoutReceipt = findViewById(R.id.layout_receipt);
+
+        // 新增：绑定 RecyclerView（XML 补丁里会新增这个 id）
+        rvReceipts = findViewById(R.id.rv_receipts);
+        //        LinearLayoutManager lm = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+        //        rvReceipts.setLayoutManager(lm);
+        LinearLayoutManager lm = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+        rvReceipts.setLayoutManager(lm);
+        receiptsAdapter = new ReceiptsAdapter(receiptUris, uri -> removeOneReceipt(uri));
+        rvReceipts.setAdapter(receiptsAdapter);
+
     }
 
     private void setupSplitRecyclerView() {
@@ -124,6 +168,22 @@ public class AddBillActivity extends AppCompatActivity {
         rvSplitAmounts.setAdapter(splitAdapter);
     }
 
+    // 放到成员变量
+    private final ActivityResultLauncher<String> requestCameraPerm =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) openCamera();
+                else Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
+            });
+
+    private void tryOpenCamera() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            openCamera();
+        } else {
+            requestCameraPerm.launch(android.Manifest.permission.CAMERA);
+        }
+    }
+
     private void setupListeners() {
         // Date picker
         tvDate.setOnClickListener(v -> showDatePicker());
@@ -136,9 +196,11 @@ public class AddBillActivity extends AppCompatActivity {
             }
         });
 
-        btnReceiptCamera.setOnClickListener(v -> openCamera());
+        btnReceiptCamera.setOnClickListener(v -> tryOpenCamera());
+        //btnReceiptCamera.setOnClickListener(v -> openCamera());
         btnReceiptGallery.setOnClickListener(v -> openGallery());
-        btnRemoveReceipt.setOnClickListener(v -> removeReceipt());
+        //btnRemoveReceipt.setOnClickListener(v -> removeReceipt());
+        //btnRemoveReceipt.setOnClickListener(v -> removeAllReceipts());
 
         // Amount input validation and split calculation
         etAmount.addTextChangedListener(new TextWatcher() {
@@ -364,16 +426,55 @@ public class AddBillActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void openCamera() {
-        // In a real app, you would open camera intent here
-        Toast.makeText(this, "Opening camera...", Toast.LENGTH_SHORT).show();
-        showReceiptPreview();
+//    private void openCamera() {
+//        // In a real app, you would open camera intent here
+//        Toast.makeText(this, "Opening camera...", Toast.LENGTH_SHORT).show();
+//        showReceiptPreview();
+//    }
+    void openCamera() {
+        try {
+            pendingCameraOutputUri = createImageOutputUri(); // 生成 content:// Uri
+            if (pendingCameraOutputUri != null) {
+                takePictureLauncher.launch(pendingCameraOutputUri);
+            } else {
+                Toast.makeText(this, "Failed to create photo file", Toast.LENGTH_SHORT).show();
+            }
+        }  catch (Exception e) {
+        e.printStackTrace();
+        Toast.makeText(this,
+                "Open camera failed: " + e.getClass().getSimpleName() + " - " + e.getMessage(),
+                Toast.LENGTH_LONG).show();
     }
+
+//        catch (Exception e) {
+//            Toast.makeText(this, "Open camera failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+//        }
+    }
+
+    // 在 app 专属外部图片目录创建文件，并用 FileProvider 转成 content://
+    private Uri createImageOutputUri() throws IOException {
+        File picturesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (picturesDir == null) return null;
+        if (!picturesDir.exists()) picturesDir.mkdirs();
+
+        String fileName = "receipt_" + System.currentTimeMillis() + ".jpg";
+        File imageFile = new File(picturesDir, fileName);
+        if (!imageFile.exists()) imageFile.createNewFile();
+
+        // 与 Manifest 里的 authorities 一致：${applicationId}.fileprovider
+        return FileProvider.getUriForFile(
+                this,
+                getPackageName() + ".fileprovider",
+                imageFile
+        );
+    }
+
 
     private void openGallery() {
         // In a real app, you would open gallery intent here
-        Toast.makeText(this, "Opening gallery...", Toast.LENGTH_SHORT).show();
-        showReceiptPreview();
+        // Toast.makeText(this, "Opening gallery...", Toast.LENGTH_SHORT).show();
+        //  showReceiptPreview();
+        pickImagesLauncher.launch(new String[]{"image/*"});
     }
 
     private void showReceiptPreview() {
@@ -495,4 +596,159 @@ public class AddBillActivity extends AppCompatActivity {
             }
         }
     }
+
+    // 拍照结果回调（成功则把 pendingCameraOutputUri 放进列表）
+    private final ActivityResultLauncher<Uri> takePictureLauncher =
+            registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
+                if (success && pendingCameraOutputUri != null) {
+                    receiptUris.add(pendingCameraOutputUri);
+                    pendingCameraOutputUri = null;
+                    updateReceiptUI();
+                } else {
+                    // 失败或用户取消，清掉临时文件（如果有）
+                    cleanupIfTempFile(pendingCameraOutputUri);
+                    pendingCameraOutputUri = null;
+                }
+            });
+
+    // 根据列表是否为空切换 placeholder/preview，并刷新列表
+    void updateReceiptUI() {
+        hasReceipt = !receiptUris.isEmpty();
+        if (hasReceipt) {
+            receiptPlaceholder.setVisibility(View.GONE);
+            receiptPreview.setVisibility(View.VISIBLE);
+            receiptsAdapter.notifyDataSetChanged();
+        } else {
+            receiptPlaceholder.setVisibility(View.VISIBLE);
+            receiptPreview.setVisibility(View.GONE);
+        }
+    }
+
+    // 删除“某一张”
+    void removeOneReceipt(Uri uri) {
+        // 先从列表移除
+        if (receiptUris.remove(uri)) {
+            // 如果是我们创建在 app 专属目录的临时文件，顺手删掉实际文件
+            cleanupIfTempFile(uri);
+            updateReceiptUI();
+        }
+    }
+
+    // 删除“全部”
+    void removeAllReceipts() {
+        // 清理所有本地临时文件
+        for (Uri uri : new ArrayList<>(receiptUris)) {
+            cleanupIfTempFile(uri);
+        }
+        receiptUris.clear();
+        updateReceiptUI();
+    }
+
+    // 多选相册图片（Storage Access Framework，支持永久读权限）
+    private final ActivityResultLauncher<String[]> pickImagesLauncher =
+            registerForActivityResult(new ActivityResultContracts.OpenMultipleDocuments(), uris -> {
+                if (uris == null || uris.isEmpty()) return;
+                // 申请持久读权限（重启后依然可读）
+                for (Uri uri : uris) {
+                    try {
+                        getContentResolver().takePersistableUriPermission(
+                                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+                    } catch (Exception ignored) {}
+                }
+                // 加入列表并刷新
+                receiptUris.addAll(uris);
+                updateReceiptUI();
+            });
+
+
+    // 如果是 app 专属目录文件，把它删掉（相册里不会有）
+    private void cleanupIfTempFile(Uri uri) {
+        if (uri == null) return;
+        try {
+            // 仅删除我们自己目录下的文件：/Android/data/<pkg>/files/Pictures/
+            File picturesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            if (picturesDir != null) {
+                File maybeFile = new File(picturesDir, new File(uri.getPath()).getName());
+                if (maybeFile.exists()) {
+                    // 安全起见，再次确认路径归属
+                    if (maybeFile.getAbsolutePath().startsWith(picturesDir.getAbsolutePath())) {
+                        //noinspection ResultOfMethodCallIgnored
+                        maybeFile.delete();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        ArrayList<String> saved = new ArrayList<>();
+        for (Uri u : receiptUris) saved.add(u.toString());
+        outState.putStringArrayList("receipt_uris", saved);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        ArrayList<String> saved = savedInstanceState.getStringArrayList("receipt_uris");
+        if (saved != null) {
+            receiptUris.clear();
+            for (String s : saved) receiptUris.add(Uri.parse(s));
+            updateReceiptUI();
+        }
+    }
+
+    private static class ReceiptVH extends RecyclerView.ViewHolder {
+        ImageView ivThumb;
+        ImageButton btnDelete;
+        ReceiptVH(View itemView) {
+            super(itemView);
+            ivThumb = itemView.findViewById(R.id.iv_thumb);
+            btnDelete = itemView.findViewById(R.id.btn_delete);
+        }
+    }
+
+    private interface OnReceiptRemove {
+        void onRemove(Uri uri);
+    }
+
+    private class ReceiptsAdapter extends RecyclerView.Adapter<ReceiptVH> {
+        private final List<Uri> data;
+        private final OnReceiptRemove onRemove;
+
+        ReceiptsAdapter(List<Uri> data, OnReceiptRemove onRemove) {
+            this.data = data;
+            this.onRemove = onRemove;
+        }
+
+        @Override
+        public ReceiptVH onCreateViewHolder(ViewGroup parent, int viewType) {
+            View v = getLayoutInflater().inflate(R.layout.item_receipt_thumbnail, parent, false);
+            return new ReceiptVH(v);
+        }
+
+        @Override
+        public void onBindViewHolder(ReceiptVH holder, int position) {
+            Uri uri = data.get(position);
+            // 简单起见直接 setImageURI；后续可换 Glide 以适配大图/旋转
+            holder.ivThumb.setImageURI(uri);
+            holder.btnDelete.setOnClickListener(v -> onRemove.onRemove(uri));
+        }
+
+        @Override
+        public int getItemCount() {
+            return data.size();
+        }
+    }
+
+    // 供“Create Bill”时使用：拿到所有要上传的图片 Uri
+    public List<Uri> getReceiptUris() {
+        return new ArrayList<>(receiptUris);
+    }
+
+
+
+
 }
