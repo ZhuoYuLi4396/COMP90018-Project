@@ -18,7 +18,8 @@
             android:layout_alignParentStart="true"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
-            android:src="@android:drawable/ic_menu_revert" />
+            android:src="@android:drawable/ic_menu_revert"
+            android:contentDescription="@string/back_button" />
     </RelativeLayout>
 
     <!-- Title -->
@@ -29,7 +30,7 @@
         android:layout_marginTop="20dp"
         android:layout_marginBottom="30dp"
         android:paddingHorizontal="16dp"
-        android:text="Tripmates in the trip"
+        android:text="@string/tripmates_title"
         android:textColor="#000000"
         android:textSize="18sp"
         android:textStyle="bold" />
@@ -53,35 +54,8 @@
             android:padding="16dp"
             android:text="A"
             android:textColor="#333333"
-            android:textSize="16sp" />
-
-        <!-- Option B -->
-        <RadioButton
-            android:id="@+id/radio_b"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:background="@android:drawable/list_selector_background"
-            android:buttonTint="#007AFF"
-            android:padding="16dp"
-            android:text="B"
-            android:textColor="#333333"
-            android:textSize="16sp" />
-
-        <!-- Option C -->
-        <RadioButton
-            android:id="@+id/radio_c"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:background="@android:drawable/list_selector_background"
-            android:buttonTint="#007AFF"
-            android:padding="16dp"
-            android:text="C"
-            android:textColor="#333333"
-            android:textSize="16sp" />
-
-    </RadioGroup>
+            android:paddingHorizontal="16dp"
+            android:orientation="vertical" />
 
     <!-- Change Payer Button -->
     <Button
@@ -91,16 +65,9 @@
         android:layout_margin="16dp"
         android:background="#000000"
         android:padding="16dp"
-        android:text="Change payer"
+        android:text="@string/change_payer"
         android:textColor="#FFFFFF"
         android:textSize="16sp"
         android:textStyle="bold" />
 
 </LinearLayout>
-
-    <!--<?xml version="1.0" encoding="utf-8"?>-->
-    <!--<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
-    <!--    android:layout_width="match_parent"-->
-    <!--    android:layout_height="match_parent">-->
-
-    <!--</androidx.constraintlayout.widget.ConstraintLayout>-->

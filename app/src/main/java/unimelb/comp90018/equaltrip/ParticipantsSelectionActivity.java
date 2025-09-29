@@ -7,19 +7,68 @@ import android.widget.CheckBox;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.ArrayList;
+import android.widget.Toast;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+
 public class ParticipantsSelectionActivity extends AppCompatActivity{
-    private CheckBox checkBoxA, checkBoxB, checkBoxC;
     private Button btnConfirmParticipants;
     private TextView tvTitle;
     private ArrayList<String> selectedParticipants;
+    private ArrayList<CheckBox> checkBoxes = new ArrayList<>();
+    private ArrayList<String> memberUids = new ArrayList<>();
+
+    ArrayList<String> selectedUids = new ArrayList<>();
+    ArrayList<String> selectedUserIds = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_participants_selection);
 
+        String tripId = getIntent().getStringExtra("tripId");
+        if (tripId == null || tripId.isEmpty()) {
+            Toast.makeText(this, "Missing tripId", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         initializeViews();
         setupListeners();
+
+        // 从 Firebase 加载成员
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("trips")
+                .document(tripId)
+                .collection("members")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        String userId = doc.getString("userId");
+                        String uid = doc.getString("uid");
+
+                        CheckBox checkBox = new CheckBox(this);
+                        checkBox.setText(userId);     // 显示名
+                        checkBox.setTag(uid);         // 实际 id
+                        checkBox.setTextSize(16);
+                        checkBox.setPadding(16, 16, 16, 16);
+                        checkBox.setChecked(selectedParticipants.contains(uid));
+
+                        checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> updateButtonState());
+
+                        // 加入到视图中和列表中
+                        ((android.widget.LinearLayout) findViewById(R.id.checkbox_container)).addView(checkBox);
+                        checkBoxes.add(checkBox);
+                        memberUids.add(uid);
+                    }
+
+                    // 初次判断是否启用按钮
+                    updateButtonState();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to load members", Toast.LENGTH_SHORT).show();
+                });
+
 
         // Get selected participants from intent
         selectedParticipants = getIntent().getStringArrayListExtra("selected_participants");
@@ -27,15 +76,10 @@ public class ParticipantsSelectionActivity extends AppCompatActivity{
             selectedParticipants = new ArrayList<>();
         }
 
-        // Set current selections
-        setCurrentSelections();
     }
 
     private void initializeViews() {
         tvTitle = findViewById(R.id.tv_title);
-        checkBoxA = findViewById(R.id.checkbox_a);
-        checkBoxB = findViewById(R.id.checkbox_b);
-        checkBoxC = findViewById(R.id.checkbox_c);
         btnConfirmParticipants = findViewById(R.id.btn_confirm_participants);
 
         tvTitle.setText("Tripmates in the trip");
@@ -48,31 +92,31 @@ public class ParticipantsSelectionActivity extends AppCompatActivity{
 
         // Confirm button
         btnConfirmParticipants.setOnClickListener(v -> {
-            ArrayList<String> selected = getSelectedParticipants();
+            getSelectedParticipants(); // 更新 selectedUids 和 selectedUserIds
+
             Intent resultIntent = new Intent();
-            resultIntent.putStringArrayListExtra("selected_participants", selected);
+            resultIntent.putStringArrayListExtra("selected_participant_uids", selectedUids);
+            resultIntent.putStringArrayListExtra("selected_participant_userids", selectedUserIds);
             setResult(RESULT_OK, resultIntent);
             finish();
         });
 
-        // Checkbox listeners to update button state
-        checkBoxA.setOnCheckedChangeListener((buttonView, isChecked) -> updateButtonState());
-        checkBoxB.setOnCheckedChangeListener((buttonView, isChecked) -> updateButtonState());
-        checkBoxC.setOnCheckedChangeListener((buttonView, isChecked) -> updateButtonState());
-    }
 
-    private void setCurrentSelections() {
-        checkBoxA.setChecked(selectedParticipants.contains("A"));
-        checkBoxB.setChecked(selectedParticipants.contains("B"));
-        checkBoxC.setChecked(selectedParticipants.contains("C"));
     }
 
     private ArrayList<String> getSelectedParticipants() {
-        ArrayList<String> selected = new ArrayList<>();
-        if (checkBoxA.isChecked()) selected.add("A");
-        if (checkBoxB.isChecked()) selected.add("B");
-        if (checkBoxC.isChecked()) selected.add("C");
-        return selected;
+        // 每次调用先清空两个列表
+        selectedUids.clear();
+        selectedUserIds.clear();
+
+        for (CheckBox cb : checkBoxes) {
+            if (cb.isChecked() && cb.getTag() != null) {
+                selectedUids.add(cb.getTag().toString());          // UID
+                selectedUserIds.add(cb.getText().toString());      // User ID
+            }
+        }
+        // 这里返回 UID 列表给 updateButtonState 用
+        return new ArrayList<>(selectedUids);
     }
 
     private void updateButtonState() {

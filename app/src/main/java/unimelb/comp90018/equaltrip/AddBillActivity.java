@@ -60,12 +60,17 @@ public class AddBillActivity extends AppCompatActivity {
 
     private Calendar calendar = Calendar.getInstance();
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-    private String selectedPayer = "A"; // Default payer
-    private ArrayList<String> selectedParticipants = new ArrayList<>();
+    private String selectedPayerUid = null;      // 用于存储到数据库
+    private String selectedPayerUserId = null;   // 用于 UI 显示
+    private ArrayList<String> selectedParticipantUids = new ArrayList<>();      // 存数据库用
+    private ArrayList<String> selectedParticipantUserIds = new ArrayList<>();   // UI展示用
     private ArrayList<ParticipantSplit> participantSplits = new ArrayList<>();
     private boolean hasReceipt = false;
     private Bitmap receiptBitmap = null;
     private double totalAmount = 0.0;
+
+    // 用于传输给后面Payer selection和Participants selection的全局变量tripId
+    private String tripId;
 
     // === Receipts (multi-images) ===
     private RecyclerView rvReceipts;
@@ -82,6 +87,22 @@ public class AddBillActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_bill);
+
+        // 在这里会拿到来自trip detail page中对应trip的tid
+        // 逻辑是trip detail page点击某个卡片后一定会保存它的tid
+        // 然后拿到这个tid用于避免孤儿bill的出现
+        // 向全局变量tripId赋值
+        tripId = getIntent().getStringExtra("tripId");
+
+        if (tripId == null || tripId.isEmpty()) {
+            Toast.makeText(this, "Missing tripId", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        // 测试完毕可以删除
+        // 这里是测试tid确实被拿到后的测试输出
+        Toast.makeText(this, "Received tripId: " + tripId, Toast.LENGTH_LONG).show();
 
         initializeViews();
         setupListeners();
@@ -105,6 +126,8 @@ public class AddBillActivity extends AppCompatActivity {
         tvPaidBy = findViewById(R.id.tv_paid_by);
         tvParticipants = findViewById(R.id.tv_participants);
         tvTotalSplit = findViewById(R.id.tv_total_split);
+
+        tvPaidBy.setText("None selected");
 
         // Spinners
         spinnerCurrency = findViewById(R.id.spinner_currency);
@@ -229,14 +252,16 @@ public class AddBillActivity extends AppCompatActivity {
         // Paid by - navigate to payer selection
         findViewById(R.id.layout_paid_by).setOnClickListener(v -> {
             Intent intent = new Intent(AddBillActivity.this, PayerSelectionActivity.class);
-            intent.putExtra("current_payer", selectedPayer);
+            intent.putExtra("current_payer", selectedPayerUserId);
+            // 向PayerSelection赋值tid
+            intent.putExtra("tripId", tripId);
             startActivityForResult(intent, 1001);
         });
 
         // Participants - navigate to participants selection
         findViewById(R.id.layout_participants).setOnClickListener(v -> {
             Intent intent = new Intent(AddBillActivity.this, ParticipantsSelectionActivity.class);
-            intent.putStringArrayListExtra("selected_participants", selectedParticipants);
+            intent.putStringArrayListExtra("selected_participants", selectedParticipantUids);
             startActivityForResult(intent, 1002);
         });
 
@@ -251,8 +276,9 @@ public class AddBillActivity extends AppCompatActivity {
         btnCreateBill.setOnClickListener(v -> createBill());
     }
 
+      /*
     private void updateSplitAmounts() {
-        if (selectedParticipants.isEmpty()) {
+        if (selectedParticipantUids.isEmpty()) {
             layoutSplitDetails.setVisibility(View.GONE);
             return;
         }
@@ -263,15 +289,103 @@ public class AddBillActivity extends AppCompatActivity {
 
         if (rbEqual.isChecked()) {
             // Equal split
-            double amountPerPerson = selectedParticipants.isEmpty() ? 0 : totalAmount / selectedParticipants.size();
-            for (String participant : selectedParticipants) {
-                participantSplits.add(new ParticipantSplit(participant, amountPerPerson));
+            double amountPerPerson = selectedParticipantUids.isEmpty() ? 0 : totalAmount / selectedParticipantUids.size();
+            for (int i = 0; i < selectedParticipantUserIds.size(); i++) {
+                String userId = selectedParticipantUserIds.get(i);  // 用于 UI 显示
+                participantSplits.add(new ParticipantSplit(userId, amountPerPerson));
             }
         } else {
             // Customize split - initialize with equal amounts
-            double amountPerPerson = selectedParticipants.isEmpty() ? 0 : totalAmount / selectedParticipants.size();
-            for (String participant : selectedParticipants) {
-                participantSplits.add(new ParticipantSplit(participant, amountPerPerson));
+            double amountPerPerson = selectedParticipantUids.isEmpty() ? 0 : totalAmount / selectedParticipantUids.size();
+            for (int i = 0; i < selectedParticipantUserIds.size(); i++) {
+                String userId = selectedParticipantUserIds.get(i);  // 用于 UI 显示
+                participantSplits.add(new ParticipantSplit(userId, amountPerPerson));
+            }
+        }
+
+        splitAdapter.updateData(participantSplits);
+        updateTotalDisplay();
+    }
+    */
+
+    // 高精度分账算法
+    private Map<String, Double> calculateSplits(String payer, List<String> participants, double amount) {
+        Map<String, Double> result = new HashMap<>();
+
+        if (participants == null || participants.isEmpty()) return result;
+        java.math.BigDecimal total = new java.math.BigDecimal(amount);
+        java.math.BigDecimal headcount = new java.math.BigDecimal(participants.size());
+
+        // 原始每人份额
+        java.math.BigDecimal rawShare = total.divide(headcount, 6, java.math.RoundingMode.HALF_UP);
+
+        // 暂存（四舍五入到分）
+        List<java.math.BigDecimal> shares = new ArrayList<>();
+        java.math.BigDecimal sumRounded = java.math.BigDecimal.ZERO;
+
+        for (int i = 0; i < participants.size(); i++) {
+            java.math.BigDecimal s = rawShare.setScale(2, java.math.RoundingMode.HALF_UP);
+            shares.add(s);
+            sumRounded = sumRounded.add(s);
+        }
+
+        // 校正误差（确保总额等于原始金额）
+        int cents = total.subtract(sumRounded).movePointRight(2).intValue();
+        int idx = 0;
+        while (cents != 0 && !shares.isEmpty()) {
+            java.math.BigDecimal delta = (cents > 0) ? new java.math.BigDecimal("0.01") : new java.math.BigDecimal("-0.01");
+            java.math.BigDecimal newVal = shares.get(idx).add(delta);
+            if (newVal.compareTo(java.math.BigDecimal.ZERO) >= 0) {
+                shares.set(idx, newVal);
+                cents += (cents > 0 ? -1 : 1);
+            }
+            idx = (idx + 1) % shares.size();
+        }
+
+        // 转换为 Map<String, Double>
+        for (int i = 0; i < participants.size(); i++) {
+            result.put(participants.get(i), shares.get(i).doubleValue());
+        }
+
+        return result;
+    }
+    /*
+
+     */
+    private void updateSplitAmounts() {
+        if (selectedParticipantUids.isEmpty()) {
+            layoutSplitDetails.setVisibility(View.GONE);
+            return;
+        }
+
+        layoutSplitDetails.setVisibility(View.VISIBLE);
+        participantSplits.clear();   // ⬅️ 必须清空，不然列表不会刷新
+
+        if (rbEqual.isChecked()) {
+            Map<String, Double> splitMap = calculateSplits(
+                    selectedPayerUserId,
+                    selectedParticipantUserIds,
+                    totalAmount
+            );
+
+            // 先放 payer
+            if (splitMap.containsKey(selectedPayerUserId)) {
+                participantSplits.add(new ParticipantSplit(
+                        selectedPayerUserId,
+                        splitMap.get(selectedPayerUserId)
+                ));
+            }
+
+            // 再放其他人
+            for (String userId : selectedParticipantUserIds) {
+                if (userId.equals(selectedPayerUserId)) continue;
+                participantSplits.add(new ParticipantSplit(userId, splitMap.get(userId)));
+            }
+        } else {
+            // Customize：沿用原逻辑
+            double amountPerPerson = totalAmount / selectedParticipantUids.size();
+            for (String userId : selectedParticipantUserIds) {
+                participantSplits.add(new ParticipantSplit(userId, amountPerPerson));
             }
         }
 
@@ -515,8 +629,30 @@ public class AddBillActivity extends AppCompatActivity {
             return;
         }
 
-        if (selectedParticipants.isEmpty()) {
+        if (selectedParticipantUids.isEmpty()) {
             Toast.makeText(this, "Please select participants", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (selectedPayerUid == null || selectedPayerUserId == null || selectedPayerUserId.equals("None selected")) {
+            Toast.makeText(this, "Please select a payer", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 防止只有 A 自己参与（不允许 payer 和唯一的 participant 是同一个人）
+        if (selectedParticipantUids.size() == 1 && selectedParticipantUids.get(0).equals(selectedPayerUid)) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Invalid Split")
+                    .setMessage("Payer cannot be the only participant.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+
+        // 禁止输入负数，为0的amount
+        double value = Double.parseDouble(etAmount.getText().toString().trim());
+        if (value <= 0) {
+            Toast.makeText(this, "Amount must be greater than 0", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -556,7 +692,7 @@ public class AddBillActivity extends AppCompatActivity {
                 "Category: " + selectedCategory + "\n" +
                 "Amount: " + spinnerCurrency.getSelectedItem().toString().substring(0, 1) +
                 etAmount.getText().toString() + "\n" +
-                "Paid by: " + selectedPayer + "\n" +
+                "Paid by: " + selectedPayerUserId + "\n" +
                 "Split: " + splitMethod +
                 "\n\nSplit Details:" + splitDetails.toString();
 
@@ -577,17 +713,16 @@ public class AddBillActivity extends AppCompatActivity {
         if (resultCode == RESULT_OK) {
             if (requestCode == 1001 && data != null) {
                 // Payer selection result
-                selectedPayer = data.getStringExtra("selected_payer");
-                tvPaidBy.setText(selectedPayer);
+                selectedPayerUid = data.getStringExtra("selected_payer_uid");
+                selectedPayerUserId = data.getStringExtra("selected_payer_userid");
+                tvPaidBy.setText(selectedPayerUserId);  // UI 只显示用户名
+                updateSplitAmounts();
             } else if (requestCode == 1002 && data != null) {
                 // Participants selection result
-                selectedParticipants = data.getStringArrayListExtra("selected_participants");
-                if (selectedParticipants != null && !selectedParticipants.isEmpty()) {
-                    if (selectedParticipants.size() == 1) {
-                        tvParticipants.setText("1 selected");
-                    } else {
-                        tvParticipants.setText(selectedParticipants.size() + " selected");
-                    }
+                selectedParticipantUids = data.getStringArrayListExtra("selected_participant_uids");
+                selectedParticipantUserIds = data.getStringArrayListExtra("selected_participant_userids");
+                if (selectedParticipantUserIds != null && !selectedParticipantUserIds.isEmpty()) {
+                    tvParticipants.setText(selectedParticipantUserIds.size() + " selected");
                     updateSplitAmounts();
                 } else {
                     tvParticipants.setText("None selected");
