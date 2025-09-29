@@ -88,5 +88,8 @@
 
     <string name="add_participants">Add participants</string>
     <string name="participants_title">Tripmates in the trip</string>
+    <!--相机用的-->
+    <string name="delete">Delete</string>
+
 
 </resources>
