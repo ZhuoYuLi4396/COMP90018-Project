@@ -76,5 +76,17 @@
 
     <string name="trip_detail">Trip Detail</string>
 
+    <!--
+    // Ziyan Zhai:
+    来自activity_payer_selection.xml的警告或error
+    如果不处理否则会无法通过安卓的残障人士功能审查
+    back_button是支付者和参与方公用的变量，两个页面都有back button
+    -->
+    <string name="back_button">Back</string>
+    <string name="tripmates_title">Tripmates in the trip</string>
+    <string name="change_payer">Change payer</string>
+
+    <string name="add_participants">Add participants</string>
+    <string name="participants_title">Tripmates in the trip</string>
 
 </resources>
