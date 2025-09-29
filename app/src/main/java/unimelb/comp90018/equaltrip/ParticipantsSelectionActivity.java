@@ -7,6 +7,7 @@ import android.widget.CheckBox;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.ArrayList;
+
 import android.widget.Toast;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
@@ -32,7 +33,6 @@ public class ParticipantsSelectionActivity extends AppCompatActivity{
             finish();
             return;
         }
-
         initializeViews();
         setupListeners();
 
@@ -69,13 +69,11 @@ public class ParticipantsSelectionActivity extends AppCompatActivity{
                     Toast.makeText(this, "Failed to load members", Toast.LENGTH_SHORT).show();
                 });
 
-
         // Get selected participants from intent
         selectedParticipants = getIntent().getStringArrayListExtra("selected_participants");
         if (selectedParticipants == null) {
             selectedParticipants = new ArrayList<>();
         }
-
     }
 
     private void initializeViews() {
@@ -100,8 +98,6 @@ public class ParticipantsSelectionActivity extends AppCompatActivity{
             setResult(RESULT_OK, resultIntent);
             finish();
         });
-
-
     }
 
     private ArrayList<String> getSelectedParticipants() {

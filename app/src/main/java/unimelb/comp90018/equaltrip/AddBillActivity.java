@@ -262,6 +262,8 @@ public class AddBillActivity extends AppCompatActivity {
         findViewById(R.id.layout_participants).setOnClickListener(v -> {
             Intent intent = new Intent(AddBillActivity.this, ParticipantsSelectionActivity.class);
             intent.putStringArrayListExtra("selected_participants", selectedParticipantUids);
+            // 向PayerSelection赋值tid
+            intent.putExtra("tripId", tripId);
             startActivityForResult(intent, 1002);
         });
 

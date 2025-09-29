@@ -41,21 +41,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingHorizontal="16dp"/>
-
-        <!-- Option A -->
-        <RadioButton
-            android:id="@+id/radio_a"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:background="@android:drawable/list_selector_background"
-            android:buttonTint="#007AFF"
-            android:padding="16dp"
-            android:text="A"
-            android:textColor="#333333"
-            android:paddingHorizontal="16dp"
-            android:orientation="vertical" />
+        android:paddingHorizontal="16dp"
+        android:orientation="vertical" />
 
     <!-- Change Payer Button -->
     <Button
