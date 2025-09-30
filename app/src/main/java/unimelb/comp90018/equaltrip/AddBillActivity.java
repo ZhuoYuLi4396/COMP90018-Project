@@ -30,9 +30,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.content.pm.PackageManager;
-import androidx.core.content.ContextCompat;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
+import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
+// OkHttp
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+// JSON 解析
+import org.json.JSONObject;
 
 public class AddBillActivity extends AppCompatActivity {
     private EditText etBillName, etMerchant, etLocation, etAmount;
@@ -50,7 +61,7 @@ public class AddBillActivity extends AppCompatActivity {
 
     // Category buttons
     private LinearLayout btnDining, btnTransport, btnShopping, btnOther;
-    private String selectedCategory = "dining"; // Default category
+    private String selectedCategory = null; // Default category
 
     // Receipt views
     private LinearLayout receiptPlaceholder;
@@ -82,6 +93,10 @@ public class AddBillActivity extends AppCompatActivity {
     // 拍照用的临时输出 Uri（启动相机前生成）
     private Uri pendingCameraOutputUri = null;
 
+    // 经纬度，由 GPS 组件写入然后给Nominatim API用
+    private double latitude = 0.0;
+    private double longitude = 0.0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,8 +125,84 @@ public class AddBillActivity extends AppCompatActivity {
         setupCategoryButtons();
         setupSplitRecyclerView();
 
+        // 这里是测试代码用的，测试Nominatim API能不能用
+        double testLat = -37.8183;
+        double testLon = 144.9671;
+        fetchCategoryFromNominatim(testLat, testLon);
+
         // Set default date
         tvDate.setText(dateFormat.format(calendar.getTime()));
+    }
+
+    private void fetchCategoryFromNominatim(double lat, double lon) {
+        String url = "https://nominatim.openstreetmap.org/reverse?format=json&lat="
+                + lat + "&lon=" + lon + "&zoom=18&addressdetails=1";
+
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("User-Agent", "EqualTrip/1.0") // Nominatim 必须有 UA
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() ->
+                        Toast.makeText(AddBillActivity.this, "API 请求失败", Toast.LENGTH_SHORT).show()
+                );
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) return;
+
+                try {
+                    String body = response.body().string();
+                    JSONObject json = new JSONObject(body);
+
+                    String cls = json.optString("class", "");
+                    String typ = json.optString("type", "");
+
+                    String category;
+                    if (!cls.isEmpty() && !typ.isEmpty()) {
+                        category = cls + " · " + typ;
+                    } else if (!cls.isEmpty()) {
+                        category = cls;
+                    } else if (!typ.isEmpty()) {
+                        category = typ;
+                    } else {
+                        category = "other"; // 默认值
+                    }
+
+                    // 在 UI 线程更新分类（比如自动选按钮）
+                    runOnUiThread(() -> {
+                        autoSelectCategory(category);
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    private void autoSelectCategory(String category) {
+        category = category.toLowerCase();
+
+        if (category.contains("restaurant") || category.contains("food") || category.contains("cafe")) {
+            selectedCategory = "dining";
+            // setCategorySelected(btnDining, true);
+        } else if (category.contains("shop") || category.contains("mall")) {
+            selectedCategory = "shopping";
+            setCategorySelected(btnShopping, true);
+        } else if (category.contains("bus") || category.contains("railway") || category.contains("transport")) {
+            selectedCategory = "transport";
+            setCategorySelected(btnTransport, true);
+        } else {
+            selectedCategory = "other";
+            setCategorySelected(btnOther, true);
+        }
     }
 
     private void initializeViews() {
@@ -278,38 +369,6 @@ public class AddBillActivity extends AppCompatActivity {
         btnCreateBill.setOnClickListener(v -> createBill());
     }
 
-      /*
-    private void updateSplitAmounts() {
-        if (selectedParticipantUids.isEmpty()) {
-            layoutSplitDetails.setVisibility(View.GONE);
-            return;
-        }
-
-        layoutSplitDetails.setVisibility(View.VISIBLE);
-
-        participantSplits.clear();
-
-        if (rbEqual.isChecked()) {
-            // Equal split
-            double amountPerPerson = selectedParticipantUids.isEmpty() ? 0 : totalAmount / selectedParticipantUids.size();
-            for (int i = 0; i < selectedParticipantUserIds.size(); i++) {
-                String userId = selectedParticipantUserIds.get(i);  // 用于 UI 显示
-                participantSplits.add(new ParticipantSplit(userId, amountPerPerson));
-            }
-        } else {
-            // Customize split - initialize with equal amounts
-            double amountPerPerson = selectedParticipantUids.isEmpty() ? 0 : totalAmount / selectedParticipantUids.size();
-            for (int i = 0; i < selectedParticipantUserIds.size(); i++) {
-                String userId = selectedParticipantUserIds.get(i);  // 用于 UI 显示
-                participantSplits.add(new ParticipantSplit(userId, amountPerPerson));
-            }
-        }
-
-        splitAdapter.updateData(participantSplits);
-        updateTotalDisplay();
-    }
-    */
-
     // 高精度分账算法
     private Map<String, Double> calculateSplits(String payer, List<String> participants, double amount) {
         Map<String, Double> result = new HashMap<>();
@@ -361,9 +420,10 @@ public class AddBillActivity extends AppCompatActivity {
         }
 
         layoutSplitDetails.setVisibility(View.VISIBLE);
-        participantSplits.clear();   // ⬅️ 必须清空，不然列表不会刷新
+        participantSplits.clear();   // 必须清空，不然列表不会刷新
 
         if (rbEqual.isChecked()) {
+            // ✅ Equal 模式：高精度分账 + payer 置顶
             Map<String, Double> splitMap = calculateSplits(
                     selectedPayerUserId,
                     selectedParticipantUserIds,
@@ -383,17 +443,18 @@ public class AddBillActivity extends AppCompatActivity {
                 if (userId.equals(selectedPayerUserId)) continue;
                 participantSplits.add(new ParticipantSplit(userId, splitMap.get(userId)));
             }
+
         } else {
-            // Customize：沿用原逻辑
-            double amountPerPerson = totalAmount / selectedParticipantUids.size();
+            // ✅ Customize 模式：初始化为 0，让用户自己填
             for (String userId : selectedParticipantUserIds) {
-                participantSplits.add(new ParticipantSplit(userId, amountPerPerson));
+                participantSplits.add(new ParticipantSplit(userId, 0.0));
             }
         }
 
         splitAdapter.updateData(participantSplits);
         updateTotalDisplay();
     }
+
 
     private void updateParticipantAmount(String participant, double newAmount) {
         for (ParticipantSplit split : participantSplits) {
@@ -453,7 +514,11 @@ public class AddBillActivity extends AppCompatActivity {
         btnOther.setOnClickListener(categoryClickListener);
 
         // Set dining as default selected
-        setCategorySelected(btnDining, true);
+        // setCategorySelected(btnDining, true);
+
+        // ✅ 启动时强制清空所有按钮，避免 Dining 被默认点亮
+        // Dining按钮一直在被默认选中？用reset把它关了
+        resetCategoryButtons();
     }
 
     private void resetCategoryButtons() {
@@ -609,6 +674,14 @@ public class AddBillActivity extends AppCompatActivity {
         receiptPreview.setVisibility(View.GONE);
     }
 
+    private String getUidFromUserId(String userId) {
+        int index = selectedParticipantUserIds.indexOf(userId);
+        if (index != -1 && index < selectedParticipantUids.size()) {
+            return selectedParticipantUids.get(index);
+        }
+        return null; // 如果没找到，返回 null（理论上不会出现）
+    }
+
     private void createBill() {
         // Validate inputs
         if (etBillName.getText().toString().trim().isEmpty()) {
@@ -677,35 +750,112 @@ public class AddBillActivity extends AppCompatActivity {
             }
         }
 
-        // Get split method
-        String splitMethod = rbEqual.isChecked() ? "Equal" : "Customize";
+        // 先定义一个列表收集 URL
+        List<String> receiptUrlList = new ArrayList<>();
 
-        // Build split details
-        StringBuilder splitDetails = new StringBuilder();
+        // 开始向后端上传这份bill
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // 生成一个新的 billId
+        String billId = db.collection("trips")
+                .document(tripId)
+                .collection("bills")
+                .document()
+                .getId();
+
+
+        // 构建 bill 数据
+        Map<String, Object> billData = new HashMap<>();
+        billData.put("billName", etBillName.getText().toString().trim());
+        billData.put("merchant", etMerchant.getText().toString().trim());
+        billData.put("location", etLocation.getText().toString().trim());
+        billData.put("category", selectedCategory);
+        billData.put("amount", totalAmount);
+        // 经纬度
+        Map<String, Object> geoPoint = new HashMap<>();
+        geoPoint.put("lat", latitude);
+        geoPoint.put("lon", longitude);
+        billData.put("geo", geoPoint);
+
+        // 向firebase发送图片
+        billData.put("receiptUrls", receiptUrlList);
+
+        // 获取当前选择的条目
+        String currencyFull = spinnerCurrency.getSelectedItem().toString();
+        // 拆分，取第二个部分（即 "AUD"、"USD"...）
+        String currencyCode = currencyFull.split(" ")[1];
+        billData.put("currency", spinnerCurrency.getSelectedItem().toString());  // 存到 Firestore
+        billData.put("paidBy", selectedPayerUid); // ⚠️存 uid，而不是 username
+        billData.put("participants", new ArrayList<>(selectedParticipantUids));
+        billData.put("createdAt", Timestamp.now());
+
+        // 构建 debts 列表
+        List<Map<String, Object>> debtsList = new ArrayList<>();
         for (ParticipantSplit split : participantSplits) {
-            splitDetails.append(String.format(Locale.getDefault(),
-                    "\n%s: %.2f", split.getName(), split.getAmount()));
+            if (!split.getName().equals(selectedPayerUserId)) { // 跳过 payer 自己
+                Map<String, Object> debt = new HashMap<>();
+                String fromUid = getUidFromUserId(split.getName());
+                if (fromUid != null) {
+                    debt.put("from", fromUid);               // 用 uid 存数据库
+                    debt.put("to", selectedPayerUid);        // payer 的 uid
+                    debt.put("amount", split.getAmount());   // 欠款金额
+                    debtsList.add(debt);
+                }
+            }
         }
 
-        // Create bill logic here
-        String message = "Bill created successfully!\n" +
-                "Name: " + etBillName.getText().toString() + "\n" +
-                "Merchant: " + etMerchant.getText().toString() + "\n" +
-                "Category: " + selectedCategory + "\n" +
-                "Amount: " + spinnerCurrency.getSelectedItem().toString().substring(0, 1) +
-                etAmount.getText().toString() + "\n" +
-                "Paid by: " + selectedPayerUserId + "\n" +
-                "Split: " + splitMethod +
-                "\n\nSplit Details:" + splitDetails.toString();
+        billData.put("debts", debtsList);
 
-        new AlertDialog.Builder(this)
-                .setTitle("Success")
-                .setMessage(message)
-                .setPositiveButton("OK", (dialog, which) -> {
-                    // Return to previous screen or main screen
-                    finish();
-                })
-                .show();
+        StorageReference storageRef = FirebaseStorage.getInstance().getReference();
+
+        if (receiptUris.isEmpty()) {
+            // 没有收据，直接存 Firestore
+            db.collection("trips")
+                    .document(tripId)
+                    .collection("bills")
+                    .document(billId)
+                    .set(billData)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Bill uploaded successfully!", Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this, "Error uploading bill: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                    );
+        } else {
+            // 有收据，走异步上传逻辑
+            for (Uri uri : receiptUris) {
+                StorageReference fileRef = storageRef.child("receipts/" + tripId + "/" + System.currentTimeMillis() + ".jpg");
+
+                fileRef.putFile(uri)
+                        .addOnSuccessListener(taskSnapshot ->
+                                fileRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
+                                    // 每次成功上传一张，就加到列表里
+                                    receiptUrlList.add(downloadUri.toString());
+
+                                    // 全部上传完后再保存 billData
+                                    if (receiptUrlList.size() == receiptUris.size()) {
+                                        billData.put("receiptUrls", receiptUrlList);
+
+                                        db.collection("trips")
+                                                .document(tripId)
+                                                .collection("bills")
+                                                .document(billId)
+                                                .set(billData)
+                                                .addOnSuccessListener(aVoid ->
+                                                        Toast.makeText(this, "Bill uploaded with images!", Toast.LENGTH_SHORT).show()
+                                                )
+                                                .addOnFailureListener(e ->
+                                                        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                                                );
+                                    }
+                                })
+                        )
+                        .addOnFailureListener(e ->
+                                Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                        );
+            }
+        }
     }
 
     @Override
