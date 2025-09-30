@@ -6,10 +6,14 @@ import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import androidx.appcompat.app.AppCompatActivity;
+
 public class PayerSelectionActivity extends AppCompatActivity{
     private RadioGroup radioGroupTripmates;
-    private RadioButton radioA, radioB, radioC;
+    //private RadioButton radioA, radioB, radioC;
     private Button btnChangePayer;
     private TextView tvTitle;
     private String currentPayer;
@@ -19,23 +23,58 @@ public class PayerSelectionActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_payer_selection);
 
+        //初始化控件
         initializeViews();
         setupListeners();
 
-        // Get current payer from intent
-        currentPayer = getIntent().getStringExtra("current_payer");
-        if (currentPayer == null) currentPayer = "A";
+        // 从 Intent 拿 tripId
+        String tripId = getIntent().getStringExtra("tripId");
 
-        // Set current selection
-        setCurrentSelection();
+        if (tripId == null || tripId.isEmpty()) {
+            Toast.makeText(this, "Missing tripId", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        // 当前 payer (uid)
+        currentPayer = getIntent().getStringExtra("current_payer");
+        if (currentPayer == null) currentPayer = "";
+
+        // 加载成员并动态添加 RadioButton
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("trips")
+                .document(tripId)
+                .collection("members")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        String userId = doc.getString("userId");
+                        String uid = doc.getString("uid");
+
+                        RadioButton radioButton = new RadioButton(this);
+                        radioButton.setText(userId);
+                        radioButton.setTag(uid);
+                        radioButton.setTextSize(16);
+                        radioButton.setPadding(16, 16, 16, 16);
+
+                        // 默认选中
+                        if (uid.equals(currentPayer)) {
+                            radioButton.setChecked(true);
+                        }
+
+                        radioGroupTripmates.addView(radioButton);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to load members", Toast.LENGTH_SHORT).show();
+                });
     }
+
 
     private void initializeViews() {
         tvTitle = findViewById(R.id.tv_title);
         radioGroupTripmates = findViewById(R.id.radio_group_tripmates);
-        radioA = findViewById(R.id.radio_a);
-        radioB = findViewById(R.id.radio_b);
-        radioC = findViewById(R.id.radio_c);
+
         btnChangePayer = findViewById(R.id.btn_change_payer);
 
         tvTitle.setText("Tripmates in the trip");
@@ -47,10 +86,18 @@ public class PayerSelectionActivity extends AppCompatActivity{
 
         // Change payer button
         btnChangePayer.setOnClickListener(v -> {
-            String selectedPayer = getSelectedPayer();
-            Intent resultIntent = new Intent();
-            resultIntent.putExtra("selected_payer", selectedPayer);
-            setResult(RESULT_OK, resultIntent);
+            int checkedId = radioGroupTripmates.getCheckedRadioButtonId();
+            RadioButton selectedBtn = findViewById(checkedId);
+
+            if (selectedBtn != null) {
+                String selectedUid = selectedBtn.getTag().toString();   // UID
+                String selectedUserId = selectedBtn.getText().toString(); // userId
+
+                Intent resultIntent = new Intent();
+                resultIntent.putExtra("selected_payer_uid", selectedUid);
+                resultIntent.putExtra("selected_payer_userid", selectedUserId);
+                setResult(RESULT_OK, resultIntent);
+            }
             finish();
         });
 
@@ -61,30 +108,15 @@ public class PayerSelectionActivity extends AppCompatActivity{
         });
     }
 
-    private void setCurrentSelection() {
-        switch (currentPayer) {
-            case "A":
-                radioA.setChecked(true);
-                break;
-            case "B":
-                radioB.setChecked(true);
-                break;
-            case "C":
-                radioC.setChecked(true);
-                break;
-        }
-    }
+
 
     private String getSelectedPayer() {
         int checkedId = radioGroupTripmates.getCheckedRadioButtonId();
-        if (checkedId == R.id.radio_a) {
-            return "A";
-        } else if (checkedId == R.id.radio_b) {
-            return "B";
-        } else if (checkedId == R.id.radio_c) {
-            return "C";
+        RadioButton selectedBtn = findViewById(checkedId);
+        if (selectedBtn != null && selectedBtn.getTag() != null) {
+            return selectedBtn.getTag().toString();  // 返回 uid（或 userId）
         }
-        return "A"; // Default
+        return currentPayer; // fallback
     }
 
     private void updateButtonState() {

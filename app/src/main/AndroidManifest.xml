@@ -38,6 +38,31 @@
 
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
+    <!-- 运行时相机权限（Android 6+ 为危险权限，需要在代码里 request） -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- 如果会从系统相册读取图片（Android 13+ 新权限）→ 只在你真的要“读图库”时加 -->
+    <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> -->
+
+    <!-- （拍视频且需要收音时才加） -->
+    <!-- <uses-permission android:name="android.permission.RECORD_AUDIO" /> -->
+
+    <!-- 让商店/系统了解你的相机需求。若应用必须有相机才能用，把 required 设为 true；否则设为 false -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- 若依赖自动对焦再加这一条（可选） -->
+    <!-- <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" /> -->
+    <!-- 相机相关勿动 -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
+
 
 
     <application
@@ -132,6 +157,17 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
+        <!-- 相机相关勿动 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>
