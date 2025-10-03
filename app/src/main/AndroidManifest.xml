@@ -36,6 +36,7 @@
         android:maxSdkVersion="28" />
     -->
 
+
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <!-- 运行时相机权限（Android 6+ 为危险权限，需要在代码里 request） -->
