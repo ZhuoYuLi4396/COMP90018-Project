@@ -18,16 +18,20 @@
     <!-- 顶部栏（含返回箭头） -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/primary_blue"
+        android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
-            android:paddingTop="40dp"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:background="@android:color/white"
-            app:navigationIcon="@drawable/ic_arrow_back_24"
-            app:titleTextAppearance="@style/ToolbarTitleText"/>
+            android:layout_height="88dp"
+        android:paddingTop="24dp"
+        android:background="@color/primary_blue"
+        app:navigationIcon="@drawable/ic_arrow_back_24"
+        app:title="Add Trip"
+        app:titleCentered="true"
+        app:popupTheme="@style/ThemeOverlay.Material3.Light"/>
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- 可滚动表单 -->
@@ -130,6 +134,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/date_start_placeholder"
+                android:textColor="@color/text_hint"
+                app:iconTint="@color/text_hint"
                 app:cornerRadius="4dp"
                 app:icon="@drawable/ic_calendar_24"
                 app:iconGravity="textStart"
@@ -160,6 +166,8 @@
                 app:cornerRadius="4dp"
                 app:icon="@drawable/ic_calendar_24"
                 app:iconGravity="textStart"
+                android:textColor="@color/text_hint"
+                app:iconTint="@color/text_hint"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_weight="1"
                 app:layout_constraintStart_toEndOf="@id/tvTo"
@@ -291,13 +299,14 @@
                 android:id="@+id/btnCreateTrip"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
-                android:layout_marginTop="@dimen/section_gap"
-                android:layout_marginBottom="@dimen/section_gap"
                 android:text="@string/create_trip"
+                android:textColor="@android:color/white"
+                app:backgroundTint="@color/primary_blue"
+                app:iconTint="@android:color/white"
                 app:cornerRadius="16dp"
-                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/rvTripmates"/>
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/rvTripmates" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

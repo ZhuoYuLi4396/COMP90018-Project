@@ -13,9 +13,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- SignUpActivity 作为启动页 -->
+        <!-- SignInActivity 作为启动页 -->
         <activity
-            android:name=".SignUpActivity"
+            android:name=".SignInActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -23,10 +23,10 @@
             </intent-filter>
         </activity>
 
-        <!-- 声明 SignInActivity（非启动页，不需要 intent-filter） -->
+        <!-- SignUpActivity 不再是启动页 -->
         <activity
-            android:name=".SignInActivity"
-            android:exported="false" />
+            android:name=".SignUpActivity"
+            android:exported="false"/>
 
         <activity
             android:name=".HomeActivity"
@@ -55,7 +55,9 @@
             android:windowSoftInputMode="adjustResize"
             />
 
+        <activity android:name=".EditTripActivity" />
+
+
     </application>
 </manifest>
-
 

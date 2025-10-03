@@ -1,12 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!--
-  Author: Jinglin Lei
-  Assignment: SignUp Layout
-  Date: 2025-09-04
--->
-
-
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -47,7 +40,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/head_bar" />
 
-    <!-- 搜索框 -->
+    <!-- 搜索框（已去掉右侧 Filter 图标） -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/search_bar"
         style="@style/EqualTrip.TextInput.Outlined"
@@ -55,14 +48,14 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/field_horizontal_margin"
         android:layout_marginTop="20dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="@dimen/field_horizontal_margin"
         android:orientation="vertical"
         app:boxBackgroundColor="@color/field_fill"
         app:boxStrokeColor="@color/field_stroke"
-        app:layout_constraintEnd_toStartOf="@id/iv_filter"
+        app:endIconMode="clear_text"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/head_bar"
-        app:layout_goneMarginEnd="0dp"
         app:startIconDrawable="@drawable/ic_search"
         app:startIconTint="@android:color/black">
 
@@ -71,30 +64,15 @@
             style="@style/EqualTrip.TextInput.EditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/find_your_t" />
+            android:hint="@string/find_your_t"
+            android:imeOptions="actionSearch"
+            android:inputType="text" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Filter 图标 -->
-    <ImageView
-        android:id="@+id/iv_filter"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginEnd="@dimen/field_horizontal_margin"
-        android:contentDescription="@string/filter"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_tune_24"
-        android:translationY="-8dp"
-        app:layout_constraintBottom_toBottomOf="@id/search_bar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/search_bar" />
-
-
     <!-- 底部导航 -->
-    <include
-        layout="@layout/include_bottom_nav"/>
-    <!-- Trip 列表 -->
+    <include layout="@layout/include_bottom_nav"/>
 
-    <!-- 圆形 + FAB -->
+    <!-- Trip 列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_trips"
         android:layout_width="0dp"
@@ -106,13 +84,12 @@
         android:paddingBottom="152dp"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/search_bar"
-        app:layout_constraintVertical_bias="0.0"
         tools:itemCount="2"
         tools:listitem="@layout/item_trip_card" />
 
+    <!-- 圆形 + FAB -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_trip"
         android:layout_width="wrap_content"
@@ -126,6 +103,5 @@
         app:srcCompat="@drawable/ic_add_24"
         app:tint="@color/btn_text_on_primary"
         app:useCompatPadding="true" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

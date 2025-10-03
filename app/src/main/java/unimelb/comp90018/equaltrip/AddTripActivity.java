@@ -1,16 +1,18 @@
 package unimelb.comp90018.equaltrip;
+
 // Author: Jinglin Lei
 // SignUp Function
-//Date: 2025-09-09
+// Date: 2025-09-09
+
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Toast;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.appbar.MaterialToolbar;
-import androidx.activity.OnBackPressedCallback;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -19,9 +21,12 @@ import androidx.core.util.Pair;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.datepicker.CalendarConstraints;
 import com.google.android.material.datepicker.MaterialDatePicker;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -35,13 +40,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.List;
 
-/**
- * AddTripActivity - full skeleton with improvements:
- *  - Date range picker
- *  - Check user existence before adding tripmate (case-insensitive)
- *  - Create trip in Firestore (with id backfill + complete listener)
- *  - Save & restore UI state on rotation/process recreation
- */
 public class AddTripActivity extends AppCompatActivity {
 
     // Views
@@ -98,9 +96,10 @@ public class AddTripActivity extends AppCompatActivity {
             @Override public void handleOnBackPressed() { handleBack(); }
         });
 
-
         // Restore state if any
         restoreState(savedInstanceState);
+        // 初始化一次按钮的“已选择/未选择”可视状态
+        applyDateButtonState();
     }
 
     private void bindViews() {
@@ -147,6 +146,7 @@ public class AddTripActivity extends AppCompatActivity {
                     endMillis   = selection.second;
                     btnStartDate.setText(formatDate(startMillis));
                     btnEndDate.setText(formatDate(endMillis));
+                    applyDateButtonState(); // ← 选完日期，切回正常色
                 }
             });
 
@@ -160,20 +160,47 @@ public class AddTripActivity extends AppCompatActivity {
         btnStartDate.setOnLongClickListener(v -> {
             startMillis = null;
             btnStartDate.setText(R.string.date_start_placeholder);
+            applyDateButtonState(); // ← 清空后回到“灰色提示感”
             return true;
         });
         btnEndDate.setOnLongClickListener(v -> {
             endMillis = null;
             btnEndDate.setText(R.string.date_end_placeholder);
+            applyDateButtonState();
             return true;
         });
+    }
+
+    /** 根据是否已选择日期，切换按钮的文字/图标颜色（灰色提示感 vs 正常色） */
+    private void applyDateButtonState() {
+        // “正常色”取主题里的 colorOnSurface，灰色用你项目里常用的次要文本色
+        int normal = MaterialColors.getColor(btnStartDate, com.google.android.material.R.attr.colorOnSurface);
+        int hint   = getColor(R.color.text_secondary); // 如果没有这个颜色，可改为 field_stroke 等灰色
+
+        // start
+        if (startMillis != null) {
+            btnStartDate.setTextColor(normal);
+            btnStartDate.setIconTint(ColorStateList.valueOf(normal));
+        } else {
+            btnStartDate.setTextColor(hint);
+            btnStartDate.setIconTint(ColorStateList.valueOf(hint));
+        }
+
+        // end
+        if (endMillis != null) {
+            btnEndDate.setTextColor(normal);
+            btnEndDate.setIconTint(ColorStateList.valueOf(normal));
+        } else {
+            btnEndDate.setTextColor(hint);
+            btnEndDate.setIconTint(ColorStateList.valueOf(hint));
+        }
     }
 
     private void setupClicks() {
         // Add email (check Firestore first)
         btnAddMate.setOnClickListener(v -> {
             String emailRaw = safeText(etMateEmail);
-            String emailLower = emailRaw.toLowerCase(Locale.ROOT);
+            String email = emailRaw.toLowerCase(Locale.ROOT);
 
             if (emailRaw.isEmpty()) {
                 toast("Please enter an email");
@@ -189,12 +216,10 @@ public class AddTripActivity extends AppCompatActivity {
             }
 
             btnAddMate.setEnabled(false);
-            // Try "email", then fallback to "emailLower"
             checkUserExists(emailRaw, exists -> {
                 btnAddMate.setEnabled(true);
                 if (exists) {
-                    // Store normalized lowercase for consistency
-                    tripmates.add(emailLower);
+                    tripmates.add(email); // 统一存小写
                     emailAdapter.notifyItemInserted(tripmates.size() - 1);
                     etMateEmail.setText("");
                 } else {
@@ -219,28 +244,17 @@ public class AddTripActivity extends AppCompatActivity {
         });
     }
 
-    /** Query Firestore: try "email" first, then fallback to "emailLower" if present */
+    /** Query Firestore: try exact email, then lowercase email */
     private void checkUserExists(String emailRaw, UserCheckCallback callback) {
         String emailLower = emailRaw.toLowerCase(Locale.ROOT);
 
-        db.collection("users")
-                .whereEqualTo("email", emailRaw)
-                .limit(1)
-                .get()
+        db.collection("users").whereEqualTo("email", emailRaw).limit(1).get()
                 .addOnSuccessListener(q -> {
-                    boolean exists = q != null && !q.isEmpty();
-                    if (exists) {
+                    if (q != null && !q.isEmpty()) {
                         callback.onResult(true);
                     } else {
-                        // Fallback: emailLower
-                        db.collection("users")
-                                .whereEqualTo("emailLower", emailLower)
-                                .limit(1)
-                                .get()
-                                .addOnSuccessListener(q2 -> {
-                                    boolean exists2 = q2 != null && !q2.isEmpty();
-                                    callback.onResult(exists2);
-                                })
+                        db.collection("users").whereEqualTo("email", emailLower).limit(1).get()
+                                .addOnSuccessListener(q2 -> callback.onResult(q2 != null && !q2.isEmpty()))
                                 .addOnFailureListener(e2 -> {
                                     toast("Verification failed, please try again later: " + e2.getMessage());
                                     callback.onResult(false);
@@ -263,36 +277,32 @@ public class AddTripActivity extends AppCompatActivity {
         Map<String, Object> data = new HashMap<>();
         data.put("name", name);
         data.put("location", location);
-
-        // 机器用：毫秒
-        data.put("startDate", startMillis);
-        data.put("endDate", endMillis);
-
+        data.put("startDate", startMillis); // 毫秒
+        data.put("endDate",   endMillis);
         data.put("description", desc);
         data.put("tripmates", new ArrayList<>(tripmates));
         data.put("ownerId", ownerId);
         data.put("createdAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
-        data.put("createdAtClient", System.currentTimeMillis()); // ← 新增：稳定排序用
-        // 展示用：字符串 yyyy-MM-dd（可选）
+        data.put("createdAtClient", System.currentTimeMillis());
+
         Map<String, Object> dateMap = new HashMap<>();
         dateMap.put("start", formatYmd(startMillis));
         dateMap.put("end",   formatYmd(endMillis));
         data.put("date", dateMap);
 
-        db.collection("trips")
-                .add(data)
+        db.collection("trips").add(data)
                 .addOnSuccessListener(docRef -> {
-                    docRef.update("id", docRef.getId()).addOnCompleteListener(t -> {
-                        toast("Trip created successfully!");
+                    String tid = docRef.getId();
+                    String ownerUid = FirebaseAuth.getInstance().getUid();
+                    writeMembersSimple(tid, ownerUid, tripmates);
 
-                        // 强制把 TripPage 拉到前台，复用已有实例
+                    docRef.update("id", tid).addOnCompleteListener(t -> {
+                        toast("Trip created successfully!");
                         Intent back = new Intent(this, TripPageActivity.class)
                                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                         startActivity(back);
-
-                        finish(); // 关闭 AddTripActivity
+                        finish();
                     });
-
                 })
                 .addOnFailureListener(e -> {
                     btnCreateTrip.setEnabled(true);
@@ -302,8 +312,7 @@ public class AddTripActivity extends AppCompatActivity {
 
     private @Nullable String formatYmd(@Nullable Long ms) {
         if (ms == null) return null;
-        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
-                .format(new java.util.Date(ms));
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date(ms));
     }
 
     private boolean validateForm() {
@@ -338,8 +347,7 @@ public class AddTripActivity extends AppCompatActivity {
     }
 
     private String formatDate(long millis) {
-        return new SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-                .format(new Date(millis));
+        return new SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(new Date(millis));
     }
 
     // ---------- State save/restore ----------
@@ -389,11 +397,11 @@ public class AddTripActivity extends AppCompatActivity {
             new AlertDialog.Builder(this)
                     .setTitle("Discard changes?")
                     .setMessage("You have unsaved changes. Discard and go back?")
-                    .setPositiveButton("Discard", (d, w) -> finish()) // 不设结果，默认 RESULT_CANCELED
+                    .setPositiveButton("Discard", (d, w) -> finish())
                     .setNegativeButton("Cancel", null)
                     .show();
         } else {
-            finish(); // 直接返回
+            finish();
         }
     }
 
@@ -417,13 +425,14 @@ public class AddTripActivity extends AppCompatActivity {
             this.onRemove = onRemove;
         }
 
-        @Override public SimpleEmailVH onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+        @NonNull @Override
+        public SimpleEmailVH onCreateViewHolder(@NonNull android.view.ViewGroup parent, int viewType) {
             android.view.View item = android.view.LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.item_tripmate_email, parent, false);
             return new SimpleEmailVH(item, onRemove);
         }
 
-        @Override public void onBindViewHolder(SimpleEmailVH holder, int position) {
+        @Override public void onBindViewHolder(@NonNull SimpleEmailVH holder, int position) {
             holder.bind(data.get(position));
         }
 
@@ -449,6 +458,63 @@ public class AddTripActivity extends AppCompatActivity {
         void bind(String email) { tvEmail.setText(email); }
     }
 
+    // Firebase 插入 members 子合集
+    // 包含创建者、参与人的个人信息
+    private void writeMembersSimple(String tid, String ownerUid, List<String> inviteEmails) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // 1) 创建者：users/{ownerUid} -> trips/{tid}/members/{ownerUid}
+        db.collection("users").document(ownerUid).get()
+                .addOnSuccessListener(ownerSnap -> {
+                    if (ownerSnap.exists()) {
+                        String email  = ownerSnap.getString("email");
+                        String userId = ownerSnap.getString("userId");
+
+                        Map<String, Object> owner = new HashMap<>();
+                        owner.put("uid", ownerUid);
+                        owner.put("email", email);
+                        owner.put("userId", userId);
+                        owner.put("role", "owner");
+
+                        db.collection("trips").document(tid)
+                                .collection("members").document(ownerUid)
+                                .set(owner);
+
+                        // 2) 受邀者：按 email 精确匹配（不做大小写转换）
+                        if (inviteEmails != null) {
+                            for (String em : inviteEmails) {
+                                if (em == null || em.isEmpty()) continue;
+
+                                db.collection("users")
+                                        .whereEqualTo("email", em)
+                                        .limit(1)
+                                        .get()
+                                        .addOnSuccessListener(q -> {
+                                            if (!q.isEmpty()) {
+                                                DocumentSnapshot u = q.getDocuments().get(0);
+                                                String uid    = u.getString("uid");
+                                                String email2 = u.getString("email");
+                                                String userId2= u.getString("userId");
+                                                if (uid == null) return;
+
+                                                Map<String, Object> m = new HashMap<>();
+                                                m.put("uid", uid);
+                                                m.put("email", email2);
+                                                m.put("userId", userId2);
+                                                m.put("role","member");
+
+                                                db.collection("trips").document(tid)
+                                                        .collection("members").document(uid)
+                                                        .set(m);
+                                            } else {
+                                                Log.w("AddTripActivity", "invite email not found in users: " + em);
+                                            }
+                                        });
+                            }
+                        }
+                    }
+                });
+    }
 
     // ================== Callback ==================
     interface UserCheckCallback { void onResult(boolean exists); }

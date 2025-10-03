@@ -50,8 +50,8 @@
 
     <string name="date_label">Date *</string>
     <string name="date_to">to</string>
-    <string name="date_start_placeholder">Aug 25th</string>
-    <string name="date_end_placeholder">Aug 28th</string>
+    <string name="date_start_placeholder">start date</string>
+    <string name="date_end_placeholder">end date</string>
 
     <string name="description_label">Description</string>
     <string name="description_hint">e.g. An extraordinary trip…</string>

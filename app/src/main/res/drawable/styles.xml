@@ -104,31 +104,8 @@
         <item name="android:lineSpacingExtra">20sp</item>    <!-- 文字更靠近图标 -->
     </style>
 
-    <!-- ====== 只保留底部两个圆角 ====== -->
-    <style name="ShapeAppearanceOverlay.Trip.Header">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">0dp</item>
-        <item name="cornerSizeTopRight">0dp</item>
-        <item name="cornerSizeBottomLeft">10dp</item>
-        <item name="cornerSizeBottomRight">10dp</item>
-    </style>
 
-    <!-- ====== 只保留底部两个圆角 ====== -->
-    <style name="ShapeAppearanceOverlay.Trip">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">0dp</item>
-        <item name="cornerSizeTopRight">0dp</item>
-        <item name="cornerSizeBottomLeft">10dp</item>
-        <item name="cornerSizeBottomRight">10dp</item>
-    </style>
 
-    <!-- ====== 只保留底部两个圆角 ====== -->
-    <style name="ShapeAppearanceOverlay">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">0dp</item>
-        <item name="cornerSizeTopRight">0dp</item>
-        <item name="cornerSizeBottomLeft">10dp</item>
-        <item name="cornerSizeBottomRight">10dp</item>
-    </style>
+
 </resources>
 
