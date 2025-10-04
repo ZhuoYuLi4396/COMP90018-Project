@@ -57,6 +57,9 @@ dependencies {
     //Splash
     implementation("androidx.core:core-splashscreen:1.0.1")
 
+    //Splash
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     // TODO: Add the dependencies for Firebase products you want to use
     // When using the BoM, don't specify versions in Firebase dependencies
     implementation("com.google.firebase:firebase-analytics")
@@ -66,6 +69,7 @@ dependencies {
 
     // ===== 地图 =====
     implementation("com.google.android.gms:play-services-maps:18.2.0")
+
 
     implementation ("androidx.navigation:navigation-fragment:2.7.7") // Navigation
     implementation ("androidx.navigation:navigation-ui:2.7.7") // Navigation
@@ -77,6 +81,16 @@ dependencies {
 
     // ===== Android 12+ Splash 启动页（向后兼容库）=====
     implementation("androidx.core:core-splashscreen:1.0.1")
+
+    implementation("com.google.android.gms:play-services-maps:18.2.0") // Google map
+    //Geocoding API
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    implementation("com.squareup.okhttp3:okhttp:4.12.0") // Nominatim API
+    implementation("com.google.firebase:firebase-storage") // Firebase storage依赖
+
 
     implementation("com.google.android.gms:play-services-maps:18.2.0") // Google map
     //Geocoding API

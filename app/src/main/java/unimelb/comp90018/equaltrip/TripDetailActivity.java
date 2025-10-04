@@ -1,3 +1,4 @@
+/*
 package unimelb.comp90018.equaltrip;
 
 import android.content.Intent;
@@ -27,6 +28,10 @@ import com.google.firebase.firestore.Filter;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
+import android.content.Intent;      // +++
+import android.widget.Button;       // +++
+import android.widget.Toast;        // +++
 
 public class TripDetailActivity extends AppCompatActivity {
 
@@ -431,3 +436,4 @@ public class TripDetailActivity extends AppCompatActivity {
 
     private static String nz(@Nullable String v, @NonNull String def){ return (v==null||v.trim().isEmpty())?def:v; }
 }
+
