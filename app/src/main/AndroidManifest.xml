@@ -1,61 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
-    <!-- 基础网络 -->
-    <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- ===== BLE / 蓝牙能力（来自远端，改为非必需以免影响安装覆盖面） ===== -->
-    <uses-feature
-        android:name="android.hardware.bluetooth_le"
-        android:required="false" />
-
-    <!-- Android 12+ (API 31+) 新蓝牙权限 -->
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-
-    <!-- 兼容 Android 10 及以下 (API <=30) 的旧蓝牙权限 -->
-    <uses-permission
-        android:name="android.permission.BLUETOOTH"
-        android:maxSdkVersion="30" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADMIN"
-        android:maxSdkVersion="30" />
-
-    <!-- 老系统扫描 BLE 需要定位权限（<= Android 10） -->
-    <uses-permission
-        android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="30" />
-    <!-- 较老机型的 COARSE（更保守地限定到 28，避免新系统多弹权限框） -->
-    <uses-permission
-        android:name="android.permission.ACCESS_COARSE_LOCATION"
-        android:maxSdkVersion="28" />
-
-    <!-- 相机（远端需要） -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <!-- 如需从图库读图（Android 13+），按需开启 -->
-    <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> -->
-
-    <!-- 相机/图库 Intent 查询（远端带来的 queries） -->
-    <queries>
-        <intent>
-            <action android:name="android.media.action.IMAGE_CAPTURE" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.GET_CONTENT" />
-            <data android:mimeType="image/*" />
-        </intent>
-    </queries>
-
-    <!-- 相机硬件声明为可选，避免强依赖 -->
-    <uses-feature
-        android:name="android.hardware.camera.any"
-        android:required="false" />
-    <!-- 如果依赖自动对焦，可取消注释 -->
-    <!-- <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" /> -->
+    <uses-permission android:name="android.permission.INTERNET"/>
 
 
     <!-- 声明 BLE 能力；如果想允许非 BLE 设备也能安装，把 required 改为 false -->
@@ -129,32 +75,26 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- ✅ 唯一启动页：先显示开屏，再跳登录 -->
+
+        <!-- 启动页 -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.EqualTrip.Splash">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- 登录页（不要带 MAIN/LAUNCHER） -->
-        <activity
-            android:name=".SignInActivity"
-            android:exported="true" />
 
-        <!-- 可选：首页（登录成功后去这里） -->
-        <activity
-            android:name=".HomeActivity"
-            android:exported="false"
-            android:launchMode="singleTask"/>
-
-
-        <!-- 账号相关  -->
+        <!-- 账号相关 -->
         <activity
             android:name=".SignUpActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SignInActivity"
             android:exported="false" />
         <activity
             android:name=".ForgotPasswordActivity"
@@ -162,21 +102,34 @@
             android:theme="@style/Theme.EqualTrip" />
 
 
-        <!-- Trip 列表/详情/新增 -->
+        <!-- 首页（可选：singleTop 防止重复实例） -->
         <activity
-            android:name=".TripPageActivity"
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTask"/>
+
+        <activity android:name=".TripPageActivity"
             android:exported="false"
             android:launchMode="singleTask" />
-        <activity android:name=".TripDetailActivity" />
-        <activity
-            android:name=".AddTripActivity"
-            android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".EditTripActivity" />
+
 
         <!-- ✅ 新增：Profile 页面（修复无法跳转问题） -->
         <activity
-            android:name=".AddBillActivity"
-            android:exported="false" />
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <activity
+            android:name=".AlgorithmTestActivity"
+            android:exported="true" />
+
+
+        <activity android:name=".TripDetailActivity" />
+        <activity android:name=".AddTripActivity"
+            android:windowSoftInputMode="adjustResize"
+            />
+
+        <!-- Payer Selection Activity -->
         <activity
             android:name=".PayerSelectionActivity"
             android:exported="false"
@@ -185,6 +138,9 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".AddBillActivity" />
         </activity>
+
+
+        <!-- Participants Selection Activity -->
         <activity
             android:name=".ParticipantsSelectionActivity"
             android:exported="false"
@@ -194,23 +150,14 @@
                 android:value=".AddBillActivity" />
         </activity>
 
-        <!-- Profile -->
         <activity
-            android:name=".ProfileActivity"
-            android:exported="false"
-            android:launchMode="singleTask" />
+            android:name=".AddBillActivity"
+            android:exported="false" />
 
-        <!-- 算法测试页面 -->
-        <activity
-            android:name=".AlgorithmTestActivity"
-            android:exported="true" />
-
-        <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
-
-        <!-- FileProvider（ -->
+        <!-- 相机相关勿动 -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
