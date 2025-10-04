@@ -1,7 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- 基础网络 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- ===== BLE / 蓝牙能力（来自远端，改为非必需以免影响安装覆盖面） ===== -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
+
+    <!-- Android 12+ (API 31+) 新蓝牙权限 -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- 兼容 Android 10 及以下 (API <=30) 的旧蓝牙权限 -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- 老系统扫描 BLE 需要定位权限（<= Android 10） -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <!-- 较老机型的 COARSE（更保守地限定到 28，避免新系统多弹权限框） -->
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="28" />
+
+    <!-- 相机（远端需要） -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 如需从图库读图（Android 13+），按需开启 -->
+    <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> -->
+
+    <!-- 相机/图库 Intent 查询（远端带来的 queries） -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
+    <!-- 相机硬件声明为可选，避免强依赖 -->
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
+    <!-- 如果依赖自动对焦，可取消注释 -->
+    <!-- <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" /> -->
 
     <application
         android:allowBackup="true"
@@ -13,7 +67,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- SignInActivity 作为启动页 -->
+        <!-- 启动页：保留你的做法（不改为远端的 Splash） -->
         <activity
             android:name=".SignInActivity"
             android:exported="true">
@@ -23,41 +77,86 @@
             </intent-filter>
         </activity>
 
-        <!-- SignUpActivity 不再是启动页 -->
+        <!-- 远端的 Splash 可保留但不作为 Launcher（避免改动你现有流程） -->
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.EqualTrip.Splash" />
+
+        <!-- 账号相关（与你保持一致） -->
         <activity
             android:name=".SignUpActivity"
-            android:exported="false"/>
-
-        <activity
-            android:name=".HomeActivity"
-            android:exported="false"
-            android:launchMode="singleTask"/>
-
-        <activity android:name=".TripPageActivity"
-            android:exported="false"
-            android:launchMode="singleTask" />
-
-        <activity android:name=".ProfileActivity"
-            android:exported="false"
-            android:launchMode="singleTask" />
-
+            android:exported="false" />
         <activity
             android:name=".ForgotPasswordActivity"
             android:exported="false"
             android:theme="@style/Theme.EqualTrip" />
 
+        <!-- 首页 -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTask"/>
+
+        <!-- Trip 列表/详情/新增（你的原有 + 远端 AddBill 相关页面） -->
+        <activity
+            android:name=".TripPageActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
+        <activity android:name=".TripDetailActivity" />
+        <activity
+            android:name=".AddTripActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".EditTripActivity" />
+
+        <!-- 远端新增：账单相关页面 -->
+        <activity
+            android:name=".AddBillActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PayerSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
+        </activity>
+        <activity
+            android:name=".ParticipantsSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
+        </activity>
+
+        <!-- Profile（保持你的 singleTask；远端是 singleTop，不影响功能） -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
+
+        <!-- 算法测试页面（你已有） -->
         <activity
             android:name=".AlgorithmTestActivity"
             android:exported="true" />
 
-        <activity android:name=".TripDetailActivity" />
-        <activity android:name=".AddTripActivity"
-            android:windowSoftInputMode="adjustResize"
-            />
+        <!-- Google Maps API Key（远端带来的） -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
 
-        <activity android:name=".EditTripActivity" />
-
+        <!-- FileProvider（相机/文件分享需要，远端带来的） -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
-</manifest>
 
+</manifest>

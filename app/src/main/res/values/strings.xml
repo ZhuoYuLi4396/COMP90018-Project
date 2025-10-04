@@ -1,7 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <string name="app_name">EqualTrip</string>
-    <!-- Imported from Figma UI design  ⬇️  -->
+
+    <!-- 基础/登录注册 -->
     <string name="equaltrip">EqualTrip</string>
     <string name="name">Name</string>
     <string name="email_or_ph">Email or Phone</string>
@@ -12,35 +14,37 @@
     <string name="already_hav">Already have an account? Sign in</string>
     <string name="split_bills">Split bills in trips</string>
 
-    <!-- app/src/main/res/values/strings.xml -->
+    <!-- Sign In 页 -->
     <string name="welcome_back">Welcome back</string>
     <string name="remember_me">Remember me</string>
     <string name="forgot_password">Forgot password?</string>
     <string name="action_sign_in">Sign in</string>
     <string name="dont_have_account">Don’t have an account? Sign up</string>
 
+    <!-- Splash -->
+    <string name="slogan_trip_splitting">Your trip splitting assistant</string>
 
-    <!-- Trip Page / Bottom Nav -->
+    <!-- Home & 通知 -->
+    <string name="notification">Notifications</string>
+    <string name="notifications">Notifications</string>
+
+    <!-- Google Maps -->
+    <string name="google_maps_key">AIzaSyCfJ_YbwTaRgHOMWwFwqAPMiJw9ArRad2o</string>
+
+    <!-- Bottom Nav / Trip Page -->
     <string name="home">Home</string>
     <string name="trips">Trips</string>
     <string name="profile">Profile</string>
 
-    <!-- Toolbar menu -->
-    <string name="notifications">Notifications</string>
-
-    <!-- Search hint -->
+    <!-- 搜索/过滤 -->
     <string name="find_your_t">Find your trip</string>
-
     <string name="filter">Filter</string>
-    <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 
+    <!-- Trip 创建入口 -->
     <string name="add_trip">Add new trip</string>
 
-
-
-    <!--add trip -->
-
+    <!-- Add Trip 表单 -->
     <string name="add_trip_title">Add Trip</string>
     <string name="trip_name_label">Trip Name *</string>
     <string name="trip_name_hint">e.g. Melbourne Adventure</string>
@@ -50,6 +54,7 @@
 
     <string name="date_label">Date *</string>
     <string name="date_to">to</string>
+    <!-- 保留占位词，避免改变现有 UI 体验 -->
     <string name="date_start_placeholder">start date</string>
     <string name="date_end_placeholder">end date</string>
 
@@ -65,9 +70,17 @@
     <string name="avatar">avatar</string>
     <string name="remove">remove</string>
 
-    <!-- 最小化detail 测试用 -->
-
+    <!-- Trip 详情（测试/最小化） -->
     <string name="trip_detail">Trip Detail</string>
 
+    <!-- 相机/列表操作等 -->
+    <string name="delete">Delete</string>
+
+    <!-- Payer/Participants 相关 -->
+    <string name="back_button">Back</string>
+    <string name="tripmates_title">Tripmates in the trip</string>
+    <string name="change_payer">Change payer</string>
+    <string name="add_participants">Add participants</string>
+    <string name="participants_title">Tripmates in the trip</string>
 
 </resources>

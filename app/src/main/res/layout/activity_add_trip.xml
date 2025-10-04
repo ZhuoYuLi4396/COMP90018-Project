@@ -220,7 +220,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tilDesc"/>
 
-            <!-- 蓝牙添加按钮（占位） -->
+            <!-- 蓝牙添加 -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddViaBluetooth"
                 style="?attr/materialButtonOutlinedStyle"
@@ -231,11 +231,11 @@
                 app:cornerRadius="4dp"
                 app:icon="@drawable/ic_bluetooth_24"
                 app:iconGravity="textStart"
-                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tvTripmatesLabel"/>
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvTripmatesLabel" />
 
-            <!-- 通过邮箱添加（输入 + + 号按钮） -->
+            <!-- 通过邮箱添加（输入 + 按钮） -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilMateEmail"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -246,8 +246,8 @@
                 app:boxBackgroundColor="@color/field_fill"
                 app:boxStrokeColor="@color/field_stroke"
                 app:hintEnabled="false"
-                app:layout_constraintEnd_toStartOf="@+id/btnAddMate"
                 app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/btnAddMate"
                 app:layout_constraintTop_toBottomOf="@id/btnAddViaBluetooth">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -265,11 +265,11 @@
                 app:backgroundTint="?attr/colorPrimary"
                 app:srcCompat="@drawable/ic_add_24"
                 app:tint="@android:color/white"
-                app:layout_constraintBottom_toBottomOf="@id/tilMateEmail"
+                app:layout_constraintStart_toEndOf="@id/tilMateEmail"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/tilMateEmail"/>
+                app:layout_constraintTop_toTopOf="@id/tilMateEmail"
+                app:layout_constraintBottom_toBottomOf="@id/tilMateEmail" />
 
-            <!-- “Tripmates added” 标题 -->
             <TextView
                 android:id="@+id/tvTripmatesAdded"
                 android:layout_width="wrap_content"
@@ -281,7 +281,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tilMateEmail"/>
 
-            <!-- 已添加的成员列表 -->
+            <!-- 成员列表（用于 Edit/显示） -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvTripmates"
                 android:layout_width="0dp"
@@ -289,12 +289,12 @@
                 android:layout_marginTop="4dp"
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="never"
-                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvTripmatesAdded"
                 tools:listitem="@layout/item_tripmate_email" />
 
-            <!-- Create Trip 按钮 -->
+            <!-- Save changes：紧接在 rvTripmates 下面 -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCreateTrip"
                 android:layout_width="0dp"
@@ -307,6 +307,8 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/rvTripmates" />
+
+            <!-- app:layout_constraintTop_toBottomOf="@id/btnAddMember" -->
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

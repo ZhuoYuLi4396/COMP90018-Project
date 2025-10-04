@@ -1,22 +1,27 @@
 package unimelb.comp90018.equaltrip;
 
-// Author: Jinglin Lei
-// Date: 2025-09-05
-// Notes:
-// - 本版加入本地搜索：仅按 Trip.name 过滤（不区分大小写）
-// - 输入框 id: et_search（TextInputEditText）
-// - 删除了右上角 filter 图标后，search_bar 的 End 约束需连到 parent
+// Author: Jinglin Lei (base) + merges
+// Date: 2025-10-03
+// Trip list + search + BLE + unified bottom nav
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.SoundEffectConstants;
+import android.widget.ImageView;
+import android.widget.Toast;
+
+import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -34,6 +39,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+// 你项目中的实体与适配器（保持原样）
+/*
+import unimelb.comp90018.equaltrip.data.Trip;
+import unimelb.comp90018.equaltrip.ui.TripAdapter;
+*/
+
 public class TripPageActivity extends AppCompatActivity {
 
     private RecyclerView rvTrips;
@@ -49,6 +60,9 @@ public class TripPageActivity extends AppCompatActivity {
     private TripAdapter adapter;
     private boolean suppressNav = false;
 
+    // ==== BLE 权限请求码 ====
+    private static final int REQ_BLE_S_BROADCAST = 1001;
+
     // 两个监听：owner 和 invited
     private ListenerRegistration ownerReg;
     private ListenerRegistration invitedReg;
@@ -61,7 +75,7 @@ public class TripPageActivity extends AppCompatActivity {
         if (bottom == null) return;
 
         bottom.setOnItemSelectedListener(item -> {
-            if (suppressNav) return true; // 程序化选中时不导航
+            if (suppressNav) return true; // 程序化高亮时不导航
             int id = item.getItemId();
             if (id == R.id.nav_trips) return true;
             if (id == R.id.nav_home) {
@@ -79,24 +93,26 @@ public class TripPageActivity extends AppCompatActivity {
             return false;
         });
 
-        // 程序化选中“Trips”且不触发监听
+        // 程序化高亮 Trips（不触发导航）
         suppressNav = true;
-        bottom.setSelectedItemId(R.id.nav_trips);
         bottom.getMenu().findItem(R.id.nav_trips).setChecked(true);
         bottom.post(() -> suppressNav = false);
+
+        bottom.setOnItemReselectedListener(item -> { /* no-op */ });
     }
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_trip_page);
-        setupBottomNav();
 
-        // --- List & FAB ---
-        rvTrips = findViewById(R.id.rv_trips);
-        fabAdd  = findViewById(R.id.fab_add_trip);
+        setupBottomNav(); // 统一导航
+
+        // --- List & FAB & Search ---
+        rvTrips  = findViewById(R.id.rv_trips);
+        fabAdd   = findViewById(R.id.fab_add_trip);
         etSearch = findViewById(R.id.et_search);
 
-        fabAdd.setSoundEffectsEnabled(true);
+        if (fabAdd != null) fabAdd.setSoundEffectsEnabled(true);
         rvTrips.setLayoutManager(new LinearLayoutManager(this));
         adapter = new TripAdapter(trips, t -> {
             Intent i = new Intent(this, TripDetailActivity.class);
@@ -105,10 +121,12 @@ public class TripPageActivity extends AppCompatActivity {
         });
         rvTrips.setAdapter(adapter);
 
-        fabAdd.setOnClickListener(v -> {
-            v.playSoundEffect(SoundEffectConstants.CLICK);
-            startActivity(new Intent(this, AddTripActivity.class));
-        });
+        if (fabAdd != null) {
+            fabAdd.setOnClickListener(v -> {
+                v.playSoundEffect(SoundEffectConstants.CLICK);
+                startActivity(new Intent(this, AddTripActivity.class));
+            });
+        }
 
         // 搜索框：仅按名称过滤（本地）
         if (etSearch != null) {
@@ -117,9 +135,15 @@ public class TripPageActivity extends AppCompatActivity {
                 @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
                 @Override public void afterTextChanged(Editable s) {
                     currentQuery = (s == null) ? "" : s.toString().trim();
-                    mergeAndPublish(); // 输入变化即刷新过滤
+                    mergeAndPublish(); // 输入变化即刷新
                 }
             });
+        }
+
+        // 右上角蓝牙图标（存在则启用）
+        ImageView ivBluetooth = findViewById(R.id.iv_bluetooth);
+        if (ivBluetooth != null) {
+            ivBluetooth.setOnClickListener(v -> tryStartBleBroadcast());
         }
 
         db = FirebaseFirestore.getInstance();
@@ -174,13 +198,12 @@ public class TripPageActivity extends AppCompatActivity {
         super.onResume();
         if (bottom != null) {
             suppressNav = true;
-            bottom.setSelectedItemId(R.id.nav_trips);
             bottom.getMenu().findItem(R.id.nav_trips).setChecked(true);
             bottom.post(() -> suppressNav = false);
         }
     }
 
-    // 合并 → 排序 → 仅按 name 过滤 → 发布
+    // ====== 合并 → 排序 → 按 name 过滤 → 发布 ======
     private void mergeAndPublish() {
         // 1) 合并
         List<Trip> merged = new ArrayList<>(byId.values());
@@ -191,7 +214,7 @@ public class TripPageActivity extends AppCompatActivity {
                 a.createdAtClient == null ? 0L : a.createdAtClient
         ));
 
-        // 3) 仅按 name 过滤（不区分大小写；其他字段不参与）
+        // 3) 仅按 name 过滤（不区分大小写）
         String q = currentQuery == null ? "" : currentQuery.toLowerCase(Locale.ROOT);
         if (!q.isEmpty()) {
             List<Trip> filtered = new ArrayList<>();
@@ -208,5 +231,73 @@ public class TripPageActivity extends AppCompatActivity {
         trips.clear();
         trips.addAll(merged);
         adapter.notifyDataSetChanged();
+    }
+
+    // ====== BLE：尝试开始广播（含动态权限） ======
+    private void tryStartBleBroadcast() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            String[] perms = new String[] {
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN
+            };
+            if (!hasAll(perms)) {
+                ActivityCompat.requestPermissions(this, perms, REQ_BLE_S_BROADCAST);
+                return;
+            }
+        } else {
+            // Android 12 以下，扫描/连接配套需要定位权限
+            if (!hasAll(new String[]{ Manifest.permission.ACCESS_FINE_LOCATION })) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{ Manifest.permission.ACCESS_FINE_LOCATION },
+                        REQ_BLE_S_BROADCAST);
+                return;
+            }
+        }
+        // 权限就绪：开始广播（例如 10 秒）
+        try {
+            BleUidExchange.get(this).startBroadcasting(10_000);
+            Toast.makeText(this, "Broadcasting my UID…", Toast.LENGTH_SHORT).show();
+        } catch (Throwable t) {
+            Toast.makeText(this, "BLE module not available.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // ====== 权限回调，允许后再次尝试 ======
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_BLE_S_BROADCAST) {
+            if (hasAll(permissions)) {
+                tryStartBleBroadcast();
+            } else {
+                Toast.makeText(this, "Bluetooth permission required to broadcast.", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private boolean hasAll(String[] ps) {
+        for (String p : ps) {
+            if (ActivityCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // ====== 释放 BLE 资源 ======
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            BleUidExchange.get(this).onDestroy();
+        } catch (Throwable ignored) {
+            // 未集成 BLE 时静默忽略
+        }
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
     }
 }

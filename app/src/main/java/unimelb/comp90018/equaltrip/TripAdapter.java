@@ -71,6 +71,7 @@ public class TripAdapter extends RecyclerView.Adapter<TripAdapter.VH> {
     }
 
     private void bindChips(@NonNull VH h, Trip t) {
+        if (h.chips == null) return; //兜底
         h.chips.removeAllViews();
 
         if (t.tripmates == null || t.tripmates.isEmpty()) return;

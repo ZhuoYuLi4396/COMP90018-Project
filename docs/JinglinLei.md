@@ -1,5 +1,5 @@
 # Jinglin Lei - Progress
-## 第一周 - 前端开发（负责注册功能）
+
 ### 2025-08-18
 - 完成注册页面的 Figma UI - Sign 页面 走查， 转换为 XML 布局文件 `activity_sign_up.xml`
 - 设置资源：
@@ -12,8 +12,16 @@
 **Next:** 使用 Java 实现注册页面的逻辑class -  `SignUpActivity` 
 
 ### 2025-08-24
-- 实现注册功能，包括正常注册流程、报错、密码设置最小长度8位。
+- 实现注册后端，包括正常注册流程、报错、密码设置最小长度8位。
 - 暂时将启动页面设置为activity_sign-up.xml方便调试
 
 ### 2025-08-28
-- 合并sign up sign in 前端功能
+- 合并sign up sign in 功能
+
+### 2025-09-04 -- 2025-09-15
+实现Trip Page展示：Trip card实时更新；trip的搜索功能。
+Add Trip
+Trip Deatil 
+
+### 2025-10-04
+一个问题：Edit Trip是否能删除成员？如果那个成员还有没还完的账单怎么办？是否去掉删除成员的功能？

@@ -39,6 +39,20 @@
         app:layout_constraintBottom_toBottomOf="@id/head_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/head_bar" />
+    <ImageView
+        android:id="@+id/iv_bluetooth"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="12dp"
+        android:contentDescription="Bluetooth"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_bluetooth_24"
+        android:translationY="15dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="@color/text_secondary"
+        app:layout_constraintTop_toTopOf="@id/head_bar"
+        app:layout_constraintBottom_toBottomOf="@id/head_bar"
+        app:layout_constraintEnd_toStartOf="@id/iv_bell" />
 
     <!-- 搜索框（已去掉右侧 Filter 图标） -->
     <com.google.android.material.textfield.TextInputLayout
