@@ -130,6 +130,13 @@
             android:windowSoftInputMode="adjustResize"
             />
 
+        <!--Change Name Activity-->
+        <activity
+            android:name=".ChangeNameActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EqualTrip"/>
+
+
         <!-- Payer Selection Activity -->
         <activity
             android:name=".PayerSelectionActivity"
