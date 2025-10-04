@@ -1,9 +1,11 @@
 package unimelb.comp90018.equaltrip;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,29 +28,21 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private static final int RC_LOCATION = 201;
 
-    // 顶部信息
     private TextView tvUsername, tvOngoingTripsNum, tvUnpaidBillsNum;
-
     private FirebaseAuth mAuth;
-    private boolean suppressNav = false;
-
-    // 地图
     private GoogleMap gmap;
-
-    // BottomNav 成员，便于 onResume 处理
-    private BottomNavigationView bottom;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home); // XML 里有 bottomNav / mapFragment / 文本控件
 
-        // ===== 绑定视图 =====
+        // 绑定视图
         tvUsername        = findViewById(R.id.tvUsername);
         tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
         tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
 
-        // ===== Firebase Auth & 文案 =====
+        // 登录检查 & 文案
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
@@ -86,62 +80,64 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Failed to load profile.", Toast.LENGTH_SHORT).show());
 
-        // ===== 地图初始化 =====
+        // 地图
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapFragment);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         } else {
-            Toast.makeText(this, "Map container (mapFragment) not found in layout.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Map container (mapFragment) not found.", Toast.LENGTH_SHORT).show();
         }
 
-        // ===== BottomNav（统一逻辑） =====
-        bottom = findViewById(R.id.bottom_nav);
+        // BottomNavigationView —— 注意这里用的是 R.id.bottomNav（与你的 XML 对齐）
+        BottomNavigationView bottom = findViewById(R.id.bottomNav);
         if (bottom != null) {
+            bottom.setSelectedItemId(R.id.nav_home);
+            bottom.setOnItemReselectedListener(item -> { /* no-op */ });
             bottom.setOnItemSelectedListener(item -> {
-                if (suppressNav) return true; // 程序化高亮时不导航
                 int id = item.getItemId();
-                if (id == R.id.nav_home) return true;
-                if (id == R.id.nav_profile) {
-                    startActivity(new Intent(this, ProfileActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                if (id == R.id.nav_home) {
+                    return true; // 已在首页
+                } else if (id == R.id.nav_trips) {
+                    // 只跳 TripPageActivity（按你原本能跳转的版本）
+                    startActivity(new Intent(this, TripPageActivity.class));
                     overridePendingTransition(0, 0);
                     return true;
-                }
-                if (id == R.id.nav_trips) {
-                    startActivity(new Intent(this, TripPageActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                } else if (id == R.id.nav_profile) {
+                    startActivity(new Intent(this, ProfileActivity.class));
                     overridePendingTransition(0, 0);
                     return true;
                 }
                 return false;
             });
-
-            // 程序化高亮 Home（不触发导航）
-            suppressNav = true;
-            bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
-            bottom.post(() -> suppressNav = false);
-
-            bottom.setOnItemReselectedListener(item -> { /* no-op */ });
         }
+
+        Button btnAddBill = findViewById(R.id.btnAddBill);
+        btnAddBill.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, AddBillActivity.class);
+            startActivity(intent);
+        });
     }
 
-    // ===== 地图就绪 =====
+    @Override
+    protected void onResume() {
+        super.onResume();
+        BottomNavigationView bottom = findViewById(R.id.bottomNav);
+        if (bottom != null) bottom.setSelectedItemId(R.id.nav_home);
+    }
+
+    // 地图回调
     @Override
     public void onMapReady(GoogleMap map) {
         gmap = map;
-
-        // 基本 UI
         gmap.getUiSettings().setZoomControlsEnabled(true);
         gmap.getUiSettings().setMapToolbarEnabled(false);
         gmap.getUiSettings().setCompassEnabled(true);
 
-        // 默认定位：Melbourne
         LatLng melbourne = new LatLng(-37.8136, 144.9631);
         gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(melbourne, 12f));
         gmap.addMarker(new MarkerOptions().position(melbourne).title("Melbourne"));
 
-        // 点击地图落点
         gmap.setOnMapClickListener(latLng -> {
             gmap.clear();
             gmap.addMarker(new MarkerOptions().position(latLng)
@@ -149,11 +145,10 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             gmap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
         });
 
-        // 蓝点（需权限）
         enableMyLocationIfGranted();
     }
 
-    // ===== 定位权限 & 蓝点 =====
+    // 定位权限
     private void enableMyLocationIfGranted() {
         boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED;
@@ -171,7 +166,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    @android.annotation.SuppressLint("MissingPermission")
+    @SuppressLint("MissingPermission")
     private void actuallyEnableMyLocation() {
         if (gmap != null) gmap.setMyLocationEnabled(true);
     }
@@ -185,15 +180,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             } else {
                 Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
             }
-        }
-    }
-
-    @Override protected void onResume() {
-        super.onResume();
-        if (bottom != null) {
-            suppressNav = true;
-            bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
-            bottom.post(() -> suppressNav = false);
         }
     }
 }

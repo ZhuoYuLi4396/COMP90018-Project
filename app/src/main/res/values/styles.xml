@@ -52,8 +52,8 @@
     <style name="EqualTrip.TextInput.Outlined" parent="Widget.Material3.TextInputLayout.OutlinedBox">
         <!-- 盒子外观 -->
         <item name="boxBackgroundMode">outline</item>
-        <item name="boxBackgroundColor">@color/field_fill</item>
-        <item name="boxStrokeColor">@color/field_stroke</item>
+        <item name="boxBackgroundColor">@color/field_fill</item>          <!-- 如 #F5F5F5 -->
+        <item name="boxStrokeColor">@color/field_stroke</item>            <!-- 如 #DDDDDD -->
         <item name="boxStrokeWidth">2dp</item>
         <item name="boxStrokeWidthFocused">2dp</item>
 
@@ -64,17 +64,17 @@
         <item name="boxCornerRadiusBottomEnd">@dimen/field_corner</item>
 
         <!-- 提示/辅助文字 -->
-        <item name="hintEnabled">false</item>
+        <item name="hintEnabled">false</item>           <!-- 你用外部 label，因此关掉内部 hint -->
         <item name="helperTextTextColor">@color/text_secondary</item>
 
-        <!-- ✅ 错误态 -->
+        <!-- ✅ 错误态（最重要） -->
         <item name="errorEnabled">true</item>
         <item name="boxStrokeErrorColor">?attr/colorError</item>
         <item name="errorTextColor">?attr/colorError</item>
         <item name="counterOverflowTextColor">?attr/colorError</item>
     </style>
 
-    <!-- 统一 EditText 文本外观（可选） -->
+    <!-- （可选）如果想统一 EditText 内文字的外观，可额外给 EditText 一个样式 -->
     <style name="EqualTrip.TextInput.EditText" parent="TextAppearance.Material3.BodyLarge">
         <item name="fontFamily">@font/inter</item>
         <item name="android:textFontWeight">400</item>
@@ -102,46 +102,17 @@
     </style>
 
     <style name="ToolbarTitleText" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
-        <item name="android:textSize">32sp</item>
-        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">32sp</item>   <!-- 修改字号 -->
+        <item name="android:textStyle">bold</item> <!-- 可选：加粗 -->
     </style>
 
     <style name="BottomNavText" parent="TextAppearance.MaterialComponents.Caption">
         <item name="android:textSize">15sp</item>
-        <item name="android:lineSpacingExtra">20sp</item>
+        <item name="android:lineSpacingExtra">20sp</item>    <!-- 文字更靠近图标 -->
     </style>
 
-    <!-- ====== Splash 主题 ====== -->
-    <style name="Theme.EqualTrip.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/splash_blue</item>
-        <!-- 可替换为你的 LOGO 资源 -->
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.EqualTrip</item>
-    </style>
 
-    <!-- ====== 你已有：只保留底部两个圆角 ====== -->
-    <style name="ShapeAppearanceOverlay.Trip.Header">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">0dp</item>
-        <item name="cornerSizeTopRight">0dp</item>
-        <item name="cornerSizeBottomLeft">10dp</item>
-        <item name="cornerSizeBottomRight">10dp</item>
-    </style>
 
-    <style name="ShapeAppearanceOverlay.Trip">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">0dp</item>
-        <item name="cornerSizeTopRight">0dp</item>
-        <item name="cornerSizeBottomLeft">10dp</item>
-        <item name="cornerSizeBottomRight">10dp</item>
-    </style>
-
-    <style name="ShapeAppearanceOverlay">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSizeTopLeft">0dp</item>
-        <item name="cornerSizeTopRight">0dp</item>
-        <item name="cornerSizeBottomLeft">10dp</item>
-        <item name="cornerSizeBottomRight">10dp</item>
-    </style>
 
 </resources>
+
