@@ -67,23 +67,30 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- 启动页：保留你的做法（不改为远端的 Splash） -->
+        <!-- ✅ 唯一启动页：先显示开屏，再跳登录 -->
         <activity
-            android:name=".SignInActivity"
-            android:exported="true">
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.EqualTrip.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <!-- 远端的 Splash 可保留但不作为 Launcher（避免改动你现有流程） -->
+        <!-- 登录页（不要带 MAIN/LAUNCHER） -->
         <activity
-            android:name=".SplashActivity"
-            android:exported="true"
-            android:theme="@style/Theme.EqualTrip.Splash" />
+            android:name=".SignInActivity"
+            android:exported="true" />
 
-        <!-- 账号相关（与你保持一致） -->
+        <!-- 可选：首页（登录成功后去这里） -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTask"/>
+
+
+        <!-- 账号相关  -->
         <activity
             android:name=".SignUpActivity"
             android:exported="false" />
@@ -92,13 +99,8 @@
             android:exported="false"
             android:theme="@style/Theme.EqualTrip" />
 
-        <!-- 首页 -->
-        <activity
-            android:name=".HomeActivity"
-            android:exported="false"
-            android:launchMode="singleTask"/>
 
-        <!-- Trip 列表/详情/新增（你的原有 + 远端 AddBill 相关页面） -->
+        <!-- Trip 列表/详情/新增 -->
         <activity
             android:name=".TripPageActivity"
             android:exported="false"
@@ -109,7 +111,6 @@
             android:windowSoftInputMode="adjustResize" />
         <activity android:name=".EditTripActivity" />
 
-        <!-- 远端新增：账单相关页面 -->
         <activity
             android:name=".AddBillActivity"
             android:exported="false" />
@@ -130,23 +131,23 @@
                 android:value=".AddBillActivity" />
         </activity>
 
-        <!-- Profile（保持你的 singleTask；远端是 singleTop，不影响功能） -->
+        <!-- Profile -->
         <activity
             android:name=".ProfileActivity"
             android:exported="false"
             android:launchMode="singleTask" />
 
-        <!-- 算法测试页面（你已有） -->
+        <!-- 算法测试页面 -->
         <activity
             android:name=".AlgorithmTestActivity"
             android:exported="true" />
 
-        <!-- Google Maps API Key（远端带来的） -->
+        <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
 
-        <!-- FileProvider（相机/文件分享需要，远端带来的） -->
+        <!-- FileProvider（ -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -3,6 +3,16 @@ package unimelb.comp90018.equaltrip;
 // Author: Jinglin Lei (base) + merges
 // Date: 2025-10-03
 // Trip list + search + BLE + unified bottom nav
+// Author: Jinglin Lei
+// SignUp Function
+//Date: 2025-09-05
+
+// Author: Ziyan Zhai
+// Based on the code of Jinglin Lei, add 2 extra functions:
+// 1, Only synchronous the related to the users, instead of synchronously all the trip cards.
+// 2, While user A create a trip and invite user B ahd user C. B and C will see the trip card.
+// But user D will not receive any trip card(Function 1).
+// Date: 2025-09-14
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
