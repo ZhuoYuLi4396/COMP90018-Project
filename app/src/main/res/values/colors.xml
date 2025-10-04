@@ -31,14 +31,5 @@
     <color name="light_gray">#F0F0F0</color>
     <color name="dark_gray">#333333</color>
     <color name="medium_gray">#999999</color>
-
-
-    <color name="splashBlue">#1E88E5</color> <!-- 亮蓝，接近截图 -->
-    <color name="splash_blue">#1E88E5</color>
-    <color name="gray_text">#666666</color>
-    <color name="primary_blue">#2196F3</color>
-    <color name="light_gray">#F0F0F0</color>
-    <color name="dark_gray">#333333</color>
-    <color name="medium_gray">#999999</color>
-
+\
 </resources>
