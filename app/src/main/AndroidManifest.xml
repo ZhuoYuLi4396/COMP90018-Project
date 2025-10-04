@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- 基础网络 -->
-    <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- ===== BLE / 蓝牙能力（建议：可选，避免限制可安装设备） ===== -->
+    <!-- 声明 BLE 能力；如果想允许非 BLE 设备也能安装，把 required 改为 false -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
-        android:required="false" />
+        android:required="true" />
 
-    <!-- Android 12+ (API 31+) 新蓝牙权限（避免重复，只保留一份） -->
+    <!-- ===== Android 12+ (API 31+) 的蓝牙运行时权限 ===== -->
     <uses-permission
         android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- 兼容 Android 10 及以下 (API <=30) 的旧蓝牙权限（仅在旧系统生效） -->
+    <!-- ===== 兼容 Android 10 及以下 (API <=30) 的旧权限 ===== -->
+    <!-- 旧版蓝牙权限（31+ 已废弃，但在旧系统仍需要），用 maxSdkVersion 限定只在旧系统请求 -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
@@ -25,21 +25,33 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
-    <!-- BLE 扫描在 Android 10 及以下需要定位权限 -->
+    <!-- 扫描 BLE 在 Android 10 及以下必须要定位权限（且系统位置开关需开启） -->
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
         android:maxSdkVersion="30" />
-    <!-- 如果想兼容更老机型，再补 COARSE 但同样限定到旧系统 -->
+    <!-- （可选）再补一条 COARSE 给更老的机型；FINE 已覆盖，可不写 -->
+    <!--
     <uses-permission
         android:name="android.permission.ACCESS_COARSE_LOCATION"
         android:maxSdkVersion="28" />
+    -->
 
-    <!-- 相机（可选，运行时动态申请） -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <!-- 运行时相机权限（Android 6+ 为危险权限，需要在代码里 request） -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- 仅当真的要读图库且 targetSdk>=33 再开启 -->
+
+    <!-- 如果会从系统相册读取图片（Android 13+ 新权限）→ 只在你真的要“读图库”时加 -->
     <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> -->
 
-    <!-- Android 11+ queries：合并为一个区块即可 -->
+    <!-- （拍视频且需要收音时才加） -->
+    <!-- <uses-permission android:name="android.permission.RECORD_AUDIO" /> -->
+
+    <!-- 让商店/系统了解你的相机需求。若应用必须有相机才能用，把 required 设为 true；否则设为 false -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- 若依赖自动对焦再加这一条（可选） -->
+    <!-- <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" /> -->
+    <!-- 相机相关勿动 -->
     <queries>
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE" />
@@ -50,10 +62,8 @@
         </intent>
     </queries>
 
-    <!-- 相机能力可选，避免强依赖 -->
-    <uses-feature
-        android:name="android.hardware.camera.any"
-        android:required="false" />
+
+
 
     <application
         android:allowBackup="true"
@@ -65,45 +75,89 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EqualTrip">
 
-        <!-- 唯一启动入口（有 intent-filter 就必须 exported=true，已设置） -->
+
+        <!-- 启动页 -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.EqualTrip.Splash">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- 其他页面不带 intent-filter，可不写 exported（或显式 false/true 均可） -->
-        <activity android:name=".SignInActivity" android:exported="true" />
-        <activity android:name=".HomeActivity" android:exported="false" android:launchMode="singleTask"/>
-        <activity android:name=".SignUpActivity" android:exported="false" />
-        <activity android:name=".ForgotPasswordActivity" android:exported="false" android:theme="@style/Theme.EqualTrip" />
 
-        <activity android:name=".TripPageActivity" android:exported="false" android:launchMode="singleTask"/>
+        <!-- 账号相关 -->
+        <activity
+            android:name=".SignUpActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SignInActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EqualTrip" />
+
+
+        <!-- 首页（可选：singleTop 防止重复实例） -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTask"/>
+
+        <activity android:name=".TripPageActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
+
+
+        <!-- ✅ 新增：Profile 页面（修复无法跳转问题） -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <activity
+            android:name=".AlgorithmTestActivity"
+            android:exported="true" />
+
+
         <activity android:name=".TripDetailActivity" />
-        <activity android:name=".AddTripActivity" android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".EditTripActivity" />
+        <activity android:name=".AddTripActivity"
+            android:windowSoftInputMode="adjustResize"
+            />
 
-        <activity android:name=".AddBillActivity" android:exported="false" />
-        <activity android:name=".PayerSelectionActivity" android:exported="false" android:parentActivityName=".AddBillActivity">
-            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value=".AddBillActivity" />
+        <!-- Payer Selection Activity -->
+        <activity
+            android:name=".PayerSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
         </activity>
-        <activity android:name=".ParticipantsSelectionActivity" android:exported="false" android:parentActivityName=".AddBillActivity">
-            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value=".AddBillActivity" />
+
+
+        <!-- Participants Selection Activity -->
+        <activity
+            android:name=".ParticipantsSelectionActivity"
+            android:exported="false"
+            android:parentActivityName=".AddBillActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".AddBillActivity" />
         </activity>
 
-        <activity android:name=".ProfileActivity" android:exported="false" android:launchMode="singleTask" />
-        <activity android:name=".AlgorithmTestActivity" android:exported="true" />
+        <activity
+            android:name=".AddBillActivity"
+            android:exported="false" />
 
-        <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
-
-        <!-- FileProvider -->
+        <!-- 相机相关勿动 -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -115,4 +169,5 @@
         </provider>
 
     </application>
+
 </manifest>
