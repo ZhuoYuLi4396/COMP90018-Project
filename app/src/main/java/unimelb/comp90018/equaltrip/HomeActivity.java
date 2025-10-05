@@ -8,6 +8,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -79,7 +80,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
-        // 顶部文案（示例）
+        // 顶部文案
         tvOngoingTripsNum.setText(" 2 ");
         tvUnpaidBillsNum.setText("6 ");
         String name = currentUser.getDisplayName();
@@ -117,19 +118,23 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             Toast.makeText(this, "Map container (mapFragment) not found in layout.", Toast.LENGTH_SHORT).show();
         }
 
-        // BottomNav（注意 id 使用 activity_home 里的 bottomNav）
-        bottom = findViewById(R.id.bottomNav);
+        // BottomNav —— 兼容 bottom_nav / bottomNav 两种 id
+        bottom = findViewById(R.id.bottom_nav);
+        if (bottom == null) bottom = findViewById(R.id.bottomNav);
+
         if (bottom != null) {
             bottom.setOnItemSelectedListener(item -> {
                 if (suppressNav) return true; // 程序化高亮时不导航
                 int id = item.getItemId();
                 if (id == R.id.nav_home) return true;
+
                 if (id == R.id.nav_profile) {
                     startActivity(new Intent(this, ProfileActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                     overridePendingTransition(0, 0);
                     return true;
                 }
+
                 if (id == R.id.nav_trips) {
                     startActivity(new Intent(this, TripPageActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
@@ -328,7 +333,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == RC_LOCATION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
