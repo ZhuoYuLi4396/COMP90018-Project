@@ -74,7 +74,6 @@
                     android:orientation="vertical"
                     android:paddingLeft="16dp">
 
-                    <!-- 与 ProfileActivity 一致 -->
                     <TextView
                         android:id="@+id/tvProfileName"
                         android:layout_width="wrap_content"
@@ -83,7 +82,6 @@
                         android:textSize="20sp"
                         android:textStyle="bold" />
 
-                    <!-- 与 ProfileActivity 一致 -->
                     <TextView
                         android:id="@+id/tvProfileEmail"
                         android:layout_width="wrap_content"
@@ -343,4 +341,5 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

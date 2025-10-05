@@ -21,7 +21,6 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 public class ProfileActivity extends AppCompatActivity {
@@ -37,6 +36,10 @@ public class ProfileActivity extends AppCompatActivity {
     private static final int RC_NOTI = 102;
     private static final int RC_BT = 103;
     private static final int RC_CAMERA = 104;
+
+    // BottomNav
+    private boolean suppressNav = false;
+    private BottomNavigationView bottom;
 
     private String currency = "AUD Australian Dollar";
     private final String[] currencies = new String[]{
@@ -54,31 +57,28 @@ public class ProfileActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        // ===== 绑定视图（确保 XML 里这些 id 存在）=====
+        // ===== 绑定视图 =====
         swLocation      = findViewById(R.id.swLocation);
         swNotification  = findViewById(R.id.swNotification);
         swBluetooth     = findViewById(R.id.swBluetooth);
         swCamera        = findViewById(R.id.swCamera);
         tvCurrencyValue = findViewById(R.id.tvCurrencyValue);
         LinearLayout rowCurrency = findViewById(R.id.rowCurrency);
-        BottomNavigationView bottom = findViewById(R.id.bottomNav);
+        bottom = findViewById(R.id.bottomNav);   // 和 XML 一致的 id
 
         tvProfileName  = findViewById(R.id.tvProfileName);
         tvProfileEmail = findViewById(R.id.tvProfileEmail);
         rowChangeName  = findViewById(R.id.rowChangeName);
 
-        // 跳到改名页
-        // 也可以把点击放在 “Edit” 文案上：findViewById(R.id.tvEdit).setOnClickListener(...)
+        // 跳到改名页（容错：控件可能不存在）
         if (rowChangeName != null) {
             rowChangeName.setOnClickListener(v ->
-                    startActivity(new Intent(ProfileActivity.this, ChangeNameActivity.class))
-            );
+                    startActivity(new Intent(ProfileActivity.this, ChangeNameActivity.class)));
         }
         TextView tvEdit = findViewById(R.id.tvEdit);
         if (tvEdit != null) {
             tvEdit.setOnClickListener(v ->
-                    startActivity(new Intent(ProfileActivity.this, ChangeNameActivity.class))
-            );
+                    startActivity(new Intent(ProfileActivity.this, ChangeNameActivity.class)));
         }
 
         // ===== Firebase =====
@@ -99,7 +99,7 @@ public class ProfileActivity extends AppCompatActivity {
         // 尝试附着用户文档并监听（支持文档ID不是uid的情况）
         attachUserProfileListener(currentUser.getUid());
 
-        // ===== 权限开关初始化（原样）=====
+        // ===== 权限开关初始化 =====
         swLocation.setChecked(hasPermission(Manifest.permission.ACCESS_FINE_LOCATION));
         if (Build.VERSION.SDK_INT >= 33) {
             swNotification.setChecked(hasPermission(Manifest.permission.POST_NOTIFICATIONS));
@@ -113,7 +113,7 @@ public class ProfileActivity extends AppCompatActivity {
         tvCurrencyValue.setText(currency);
         rowCurrency.setOnClickListener(v -> showCurrencyDialog());
 
-        // 监听（原样）
+        // 监听
         swLocation.setOnCheckedChangeListener((b, c) -> {
             if (c) requestIfNeeded(Manifest.permission.ACCESS_FINE_LOCATION, RC_LOCATION);
             else toast("Location usage turned off in app");
@@ -135,27 +135,33 @@ public class ProfileActivity extends AppCompatActivity {
             else toast("Camera usage turned off in app");
         });
 
-        // ===== BottomNav（原样）=====
+        // ===== BottomNav（统一逻辑） =====
         if (bottom != null) {
-            bottom.setSelectedItemId(R.id.nav_profile);
-            bottom.setOnItemReselectedListener(item -> {});
             bottom.setOnItemSelectedListener(item -> {
+                if (suppressNav) return true; // 程序化高亮时不导航
                 int id = item.getItemId();
+                if (id == R.id.nav_profile) return true; // 已在本页
                 if (id == R.id.nav_home) {
-                    startActivity(new Intent(ProfileActivity.this, HomeActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                    startActivity(new Intent(this, HomeActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                     overridePendingTransition(0, 0);
-                    finish();
                     return true;
-                } else if (id == R.id.nav_trips) {
-                    Toast.makeText(this, "Trips coming soon", Toast.LENGTH_SHORT).show();
-                    bottom.setSelectedItemId(R.id.nav_profile);
-                    return false;
-                } else if (id == R.id.nav_profile) {
+                }
+                if (id == R.id.nav_trips) {
+                    startActivity(new Intent(this, TripPageActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                    overridePendingTransition(0, 0);
                     return true;
                 }
                 return false;
             });
+
+            // 程序化高亮 Profile（不触发导航）
+            suppressNav = true;
+            bottom.getMenu().findItem(R.id.nav_profile).setChecked(true);
+            bottom.post(() -> suppressNav = false);
+
+            bottom.setOnItemReselectedListener(item -> { /* no-op */ });
         }
     }
 
@@ -170,7 +176,6 @@ public class ProfileActivity extends AppCompatActivity {
             if (snap != null && snap.exists()) {
                 attachListenerOnDoc(docById);
             } else {
-                // 文档ID不是uid，按字段 uid 查询一次
                 db.collection("users")
                         .whereEqualTo("uid", authUid)
                         .limit(1)
@@ -180,12 +185,10 @@ public class ProfileActivity extends AppCompatActivity {
                                 DocumentReference realDoc = qs.getDocuments().get(0).getReference();
                                 attachListenerOnDoc(realDoc);
                             } else {
-                                // 都没找到：用 Auth 的 displayName 兜底
                                 String fallback = (currentUser.getDisplayName() != null &&
                                         !currentUser.getDisplayName().isEmpty())
                                         ? currentUser.getDisplayName() : "User";
                                 tvProfileName.setText(fallback);
-                                // 邮箱保留 init 时的
                             }
                         })
                         .addOnFailureListener(e -> {
@@ -212,7 +215,6 @@ public class ProfileActivity extends AppCompatActivity {
             // 名字：优先 userId
             String name = snap.getString("userId");
             if (name == null || name.trim().isEmpty()) {
-                // 兜底
                 String fallback = (currentUser.getDisplayName() != null &&
                         !currentUser.getDisplayName().isEmpty())
                         ? currentUser.getDisplayName() : "User";
@@ -230,7 +232,7 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
-    // ===== 工具方法（原样）=====
+    // ===== 工具方法 =====
     private boolean hasPermission(String perm) {
         return ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED;
     }
@@ -272,6 +274,15 @@ public class ProfileActivity extends AppCompatActivity {
         } else if (rc == RC_CAMERA) {
             swCamera.setChecked(granted);
             if (!granted) toast("Camera permission denied");
+        }
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (bottom != null) {
+            suppressNav = true;
+            bottom.getMenu().findItem(R.id.nav_profile).setChecked(true);
+            bottom.post(() -> suppressNav = false);
         }
     }
 }

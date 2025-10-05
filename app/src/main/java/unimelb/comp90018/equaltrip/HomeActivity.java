@@ -1,7 +1,6 @@
 package unimelb.comp90018.equaltrip;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -37,19 +36,26 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private static final int RC_LOCATION = 201;
 
+    // 顶部信息
     private TextView tvUsername, tvOngoingTripsNum, tvUnpaidBillsNum;
+
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
+    // 底部导航辅助
+    private boolean suppressNav = false;
+    private BottomNavigationView bottom;
+
+    // 地图
     private GoogleMap gmap;
-    private boolean mapReady = false; // ✅ 新增：记录地图是否已就绪
+    private boolean mapReady = false;
 
     // Firestore 实时监听（两路：我参与、我支付）
     @Nullable private ListenerRegistration billsRegParticipants = null;
     @Nullable private ListenerRegistration billsRegPayer = null;
 
     // 合并容器：docPath -> LatLng/Title
-    private final Map<String, com.google.android.gms.maps.model.LatLng> currentMarkers = new HashMap<>();
+    private final Map<String, LatLng> currentMarkers = new HashMap<>();
     private final Map<String, String> currentTitles  = new HashMap<>();
 
     @Override
@@ -57,10 +63,12 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
+        // 绑定视图
         tvUsername        = findViewById(R.id.tvUsername);
         tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
         tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
 
+        // Firebase
         mAuth = FirebaseAuth.getInstance();
         db    = FirebaseFirestore.getInstance();
 
@@ -71,7 +79,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
-        // 顶部文案（原逻辑）
+        // 顶部文案（示例）
         tvOngoingTripsNum.setText(" 2 ");
         tvUnpaidBillsNum.setText("6 ");
         String name = currentUser.getDisplayName();
@@ -106,63 +114,65 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         } else {
-            Toast.makeText(this, "Map container (mapFragment) not found.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Map container (mapFragment) not found in layout.", Toast.LENGTH_SHORT).show();
         }
 
-        // BottomNav
-        BottomNavigationView bottom = findViewById(R.id.bottomNav);
+        // BottomNav（注意 id 使用 activity_home 里的 bottomNav）
+        bottom = findViewById(R.id.bottomNav);
         if (bottom != null) {
-            bottom.setSelectedItemId(R.id.nav_home);
-            bottom.setOnItemReselectedListener(item -> { /* no-op */ });
             bottom.setOnItemSelectedListener(item -> {
+                if (suppressNav) return true; // 程序化高亮时不导航
                 int id = item.getItemId();
-                if (id == R.id.nav_home) {
-                    return true;
-                } else if (id == R.id.nav_trips) {
-                    startActivity(new Intent(this, TripPageActivity.class));
+                if (id == R.id.nav_home) return true;
+                if (id == R.id.nav_profile) {
+                    startActivity(new Intent(this, ProfileActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                     overridePendingTransition(0, 0);
                     return true;
-                } else if (id == R.id.nav_profile) {
-                    startActivity(new Intent(this, ProfileActivity.class));
+                }
+                if (id == R.id.nav_trips) {
+                    startActivity(new Intent(this, TripPageActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                     overridePendingTransition(0, 0);
                     return true;
                 }
                 return false;
             });
+
+            // 程序化高亮 Home（不触发导航）
+            suppressNav = true;
+            bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
+            bottom.post(() -> suppressNav = false);
+
+            bottom.setOnItemReselectedListener(item -> { /* no-op */ });
         }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        // ✅ 关键：回到首页时，如果地图已就绪，就重新挂监听，立刻能收到新 bill 更新
+        // 回到首页时，如果地图已就绪，就重新挂监听，立刻能收到新 bill 更新
         if (mapReady && gmap != null) {
             startListeningMyBills();
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        BottomNavigationView bottom = findViewById(R.id.bottomNav);
-        if (bottom != null) bottom.setSelectedItemId(R.id.nav_home);
-    }
-
-    // 地图回调
+    // 地图就绪
     @Override
     public void onMapReady(GoogleMap map) {
         gmap = map;
-        mapReady = true; // ✅ 标记地图已就绪
+        mapReady = true;
 
         gmap.getUiSettings().setZoomControlsEnabled(true);
         gmap.getUiSettings().setMapToolbarEnabled(false);
         gmap.getUiSettings().setCompassEnabled(true);
 
-        // 默认 Melbourne（首次加载时）
+        // 默认 Melbourne
         LatLng melbourne = new LatLng(-37.8136, 144.9631);
         gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(melbourne, 12f));
         gmap.addMarker(new MarkerOptions().position(melbourne).title("Melbourne"));
 
+        // 蓝点
         enableMyLocationIfGranted();
 
         // 首次地图就绪也挂一次
@@ -179,7 +189,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         // 先清旧监听，避免重复
         stopListeningMyBills();
 
-        // 不清空 currentMarkers，让另一路的结果能够合并；但首次进入可以清空再画
         currentMarkers.clear();
         currentTitles.clear();
 
@@ -189,7 +198,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .addSnapshotListener((snap, err) -> {
                     if (err != null || snap == null) return;
 
-                    // 先移除这路里不再存在的文档（用路径区分）
                     Set<String> alive = new HashSet<>();
                     for (QueryDocumentSnapshot doc : snap) {
                         String key = doc.getReference().getPath();
@@ -203,8 +211,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                             currentTitles.remove(key);
                         }
                     }
-                    // 不在快照中的旧 key（但可能被 payer 路径保留），这里不强删，让合并逻辑决定
-
                     redrawAllMarkers();
                 });
 
@@ -244,7 +250,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (gmap == null) return;
 
         gmap.clear();
-
         if (currentMarkers.isEmpty()) return;
 
         LatLngBounds.Builder bounds = new LatLngBounds.Builder();
@@ -299,7 +304,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         return title;
     }
 
-    // 定位权限
+    // ===== 定位权限 & 蓝点 =====
     private void enableMyLocationIfGranted() {
         boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED;
@@ -317,7 +322,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    @SuppressLint("MissingPermission")
+    @android.annotation.SuppressLint("MissingPermission")
     private void actuallyEnableMyLocation() {
         if (gmap != null) gmap.setMyLocationEnabled(true);
     }
@@ -337,7 +342,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onStop() {
         super.onStop();
-        // 仍然在 onStop 里移除监听，避免泄漏
         stopListeningMyBills();
     }
 
@@ -345,5 +349,15 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onDestroy() {
         super.onDestroy();
         stopListeningMyBills();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (bottom != null) {
+            suppressNav = true;
+            bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
+            bottom.post(() -> suppressNav = false);
+        }
     }
 }
