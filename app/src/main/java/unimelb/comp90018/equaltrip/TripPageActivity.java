@@ -153,7 +153,7 @@ public class TripPageActivity extends AppCompatActivity {
         // 右上角蓝牙图标（存在则启用）
         ImageView ivBluetooth = findViewById(R.id.iv_bluetooth);
         if (ivBluetooth != null) {
-            ivBluetooth.setOnClickListener(v -> tryStartBleBroadcast());
+            ivBluetooth.setOnClickListener(v -> promptPinThenBroadcast());
         }
 
         db = FirebaseFirestore.getInstance();
@@ -244,7 +244,8 @@ public class TripPageActivity extends AppCompatActivity {
     }
 
     // ====== BLE：尝试开始广播（含动态权限） ======
-    private void tryStartBleBroadcast() {
+    // 入口：检查权限 → 弹窗输入 PIN
+    private void promptPinThenBroadcast() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             String[] perms = new String[] {
                     Manifest.permission.BLUETOOTH_ADVERTISE,
@@ -256,7 +257,6 @@ public class TripPageActivity extends AppCompatActivity {
                 return;
             }
         } else {
-            // Android 12 以下，扫描/连接配套需要定位权限
             if (!hasAll(new String[]{ Manifest.permission.ACCESS_FINE_LOCATION })) {
                 ActivityCompat.requestPermissions(this,
                         new String[]{ Manifest.permission.ACCESS_FINE_LOCATION },
@@ -264,14 +264,96 @@ public class TripPageActivity extends AppCompatActivity {
                 return;
             }
         }
-        // 权限就绪：开始广播（例如 10 秒）
-        try {
-            BleUidExchange.get(this).startBroadcasting(10_000);
-            Toast.makeText(this, "Broadcasting my UID…", Toast.LENGTH_SHORT).show();
-        } catch (Throwable t) {
-            Toast.makeText(this, "BLE module not available.", Toast.LENGTH_SHORT).show();
-        }
+        showPinDialogAndBroadcast();
     }
+
+    // 弹出 PIN 输入框 → 校验 4 位 → startBroadcastingWithPin(pin, 60s) + 倒计时对话框
+    private void showPinDialogAndBroadcast() {
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setHint("Enter 4-digit PIN");
+        et.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        et.setFilters(new android.text.InputFilter[]{ new android.text.InputFilter.LengthFilter(4) });
+        et.setKeyListener(android.text.method.DigitsKeyListener.getInstance("0123456789"));
+        int pad = (int)(20 * getResources().getDisplayMetrics().density);
+        et.setPadding(pad, pad/2, pad, pad/2);
+
+        final androidx.appcompat.app.AlertDialog pinDlg = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Bluetooth PIN")
+                .setView(et)
+                .setPositiveButton("Start", null)   // 稍后覆写避免自动关闭
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        pinDlg.setOnShowListener(d -> {
+            android.widget.Button ok = pinDlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE);
+            ok.setOnClickListener(v -> {
+                String pin = (et.getText()==null) ? "" : et.getText().toString().trim();
+                if (!pin.matches("\\d{4}")) { et.setError("Enter exactly 4 digits"); return; }
+                pinDlg.dismiss();
+
+                final long durationMs = 60_000L;
+
+                // 开始“带 PIN 的广播”
+                try {
+                    BleUidExchange.get(this).startBroadcastingWithPin(pin, durationMs);
+                } catch (Throwable t) {
+                    Toast.makeText(this, "BLE unavailable", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                // 展示一个倒计时与“Stop now”的对话框
+                android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+                box.setOrientation(android.widget.LinearLayout.VERTICAL);
+                box.setPadding(pad, pad, pad, 0);
+
+                android.widget.TextView tvInfo = new android.widget.TextView(this);
+                tvInfo.setText("Broadcasting with PIN:");
+                tvInfo.setTextSize(14);
+
+                android.widget.TextView tvPin = new android.widget.TextView(this);
+                tvPin.setText(pin);
+                tvPin.setTextSize(36);
+                tvPin.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+                tvPin.setPadding(0, pad/2, 0, pad/2);
+
+                android.widget.TextView tvCountdown = new android.widget.TextView(this);
+                tvCountdown.setTextSize(14);
+
+                box.addView(tvInfo);
+                box.addView(tvPin);
+                box.addView(tvCountdown);
+
+                final androidx.appcompat.app.AlertDialog runningDlg =
+                        new androidx.appcompat.app.AlertDialog.Builder(this)
+                                .setView(box)
+                                .setCancelable(false)
+                                .setNegativeButton("Stop now", (dd, ww) -> {
+                                    try { BleUidExchange.get(this).onDestroy(); } catch (Throwable ignore) {}
+                                    Toast.makeText(this, "Broadcast stopped.", Toast.LENGTH_SHORT).show();
+                                })
+                                .create();
+                runningDlg.show();
+
+                // 60s 倒计时
+                new android.os.CountDownTimer(durationMs, 1000) {
+                    @Override public void onTick(long ms) { tvCountdown.setText("Time left: " + (ms/1000) + "s"); }
+                    @Override public void onFinish() {
+                        if (runningDlg.isShowing()) runningDlg.dismiss();
+                        Toast.makeText(TripPageActivity.this, "Broadcast finished.", Toast.LENGTH_SHORT).show();
+                    }
+                }.start();
+            });
+
+            // 自动弹出数字键盘
+            et.requestFocus();
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(et, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+        });
+
+        pinDlg.show();
+    }
+
 
     // ====== 权限回调，允许后再次尝试 ======
     @Override
@@ -280,7 +362,7 @@ public class TripPageActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_BLE_S_BROADCAST) {
             if (hasAll(permissions)) {
-                tryStartBleBroadcast();
+                promptPinThenBroadcast();
             } else {
                 Toast.makeText(this, "Bluetooth permission required to broadcast.", Toast.LENGTH_SHORT).show();
             }

@@ -1,6 +1,6 @@
 package unimelb.comp90018.equaltrip;
 
-// Author: Jinglin Lei
+// Author: Jinglin Lei, Ziyan Zhai, Zhuoyu Li
 // AddTrip Activity (Merged: local UI polish + BLE invite)
 // Date: 2025-10-03
 
@@ -208,7 +208,7 @@ public class AddTripActivity extends AppCompatActivity {
         });
 
         // 蓝牙扫描拉人
-        btnAddViaBluetooth.setOnClickListener(v -> tryScanForTripmates());
+        btnAddViaBluetooth.setOnClickListener(v -> generatePinAndScan());
 
         // 创建 Trip
         btnCreateTrip.setOnClickListener(v -> {
@@ -219,6 +219,108 @@ public class AddTripActivity extends AppCompatActivity {
     }
 
     // ========================= BLE 扫描 =========================
+    // 生成 PIN → 显示 → 开始扫描
+    private void generatePinAndScan() {
+        // 权限检查（扫描端逻辑保持不变）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            String[] perms = new String[] {
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT
+            };
+            if (!hasAll(perms)) {
+                ActivityCompat.requestPermissions(this, perms, REQ_BLE_S_SCAN);
+                return;
+            }
+        } else {
+            if (!hasAll(new String[]{ Manifest.permission.ACCESS_FINE_LOCATION })) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{ Manifest.permission.ACCESS_FINE_LOCATION },
+                        REQ_BLE_S_SCAN);
+                return;
+            }
+        }
+
+        // 1) 生成随机 4 位 PIN（BleUidExchange 已实现，支持前导 0）
+        String pin = BleUidExchange.get(this).generateSessionPin();
+
+        // 2) 弹窗显示 PIN（大号等宽字体）+ 倒计时 + 提前停止
+        final long durationMs = 60_000L;
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int)(16 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad, pad, 0);
+
+        android.widget.TextView tvTitle = new android.widget.TextView(this);
+        tvTitle.setText("Share this 4-digit PIN with your friend");
+        tvTitle.setTextSize(16);
+
+        android.widget.TextView tvPin = new android.widget.TextView(this);
+        tvPin.setText(pin);
+        tvPin.setTextSize(36);
+        tvPin.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+        tvPin.setPadding(0, pad, 0, pad);
+
+        android.widget.TextView tvHint = new android.widget.TextView(this);
+        tvHint.setText("They will input this PIN on their phone to start broadcasting.");
+        tvHint.setTextSize(14);
+
+        android.widget.TextView tvCountdown = new android.widget.TextView(this);
+        tvCountdown.setTextSize(14);
+        tvCountdown.setPadding(0, pad, 0, 0);
+
+        com.google.android.material.button.MaterialButton btnCopy =
+                new com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        btnCopy.setText("Copy PIN");
+        btnCopy.setOnClickListener(v -> {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("PIN", pin));
+            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+        });
+
+        box.addView(tvTitle);
+        box.addView(tvPin);
+        box.addView(tvHint);
+        box.addView(tvCountdown);
+        box.addView(btnCopy);
+
+        androidx.appcompat.app.AlertDialog dlg = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setView(box)
+                .setCancelable(false)
+                .setNegativeButton("Stop now", (d, w) -> {
+                    try { BleUidExchange.get(this).onDestroy(); } catch (Throwable ignore) {}
+                    Toast.makeText(this, "Scan stopped.", Toast.LENGTH_SHORT).show();
+                })
+                .create();
+
+        dlg.show();
+
+        // 3) 立刻按 PIN 开始扫描 60 秒（A 端扫描端）
+        seenUids.clear();
+        Toast.makeText(this, "Scanning with PIN " + pin + " …", Toast.LENGTH_SHORT).show();
+
+        BleUidExchange.get(this).startScanningWithPin(pin, durationMs, new BleUidExchange.OnUidFoundListener() {
+            @Override public void onUidFound(String uid) {
+                if (uid == null || uid.isEmpty()) return;
+                if (!seenUids.add(uid)) return;
+                fetchEmailByUid(uid, email -> {
+                    if (email == null || email.isEmpty()) return;
+                    addTripmateByEmail(email);
+                });
+            }
+            @Override public void onScanFinished() {
+                if (dlg.isShowing()) dlg.dismiss();
+                Toast.makeText(AddTripActivity.this, "Scan finished.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // 倒计时文字
+        new android.os.CountDownTimer(durationMs, 1000) {
+            @Override public void onTick(long ms) { tvCountdown.setText("Scanning… " + (ms/1000) + "s left"); }
+            @Override public void onFinish() { /* onScanFinished 会关对话框，这里无需重复 */ }
+        }.start();
+    }
+
+
     private void tryScanForTripmates() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             String[] perms = new String[] {
@@ -552,7 +654,7 @@ public class AddTripActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_BLE_S_SCAN) {
             if (hasAll(permissions)) {
-                tryScanForTripmates();
+                generatePinAndScan();   // ← 用新的 PIN 流程
             } else {
                 Toast.makeText(this, "Bluetooth permission required to scan.", Toast.LENGTH_SHORT).show();
             }
