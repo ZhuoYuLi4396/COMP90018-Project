@@ -89,7 +89,7 @@ public class BillDetailActivity extends AppCompatActivity {
         tvPayerPaidAmount = findViewById(R.id.tvPayerPaidAmount);
         ivPayerAvatar = findViewById(R.id.ivPayerAvatar);
         progress = findViewById(R.id.progress);
-        cardReceipt = findViewById(R.id.cardReceipt);
+//        cardReceipt = findViewById(R.id.cardReceipt);
 
         androidx.recyclerview.widget.RecyclerView rv = findViewById(R.id.rvParticipants);
         rv.setLayoutManager(new LinearLayoutManager(this));
@@ -244,19 +244,20 @@ public class BillDetailActivity extends AppCompatActivity {
         }
 
         // 收据
-        String receiptUrl = bill.receiptUrl;
-        if (bill.receiptUrls != null && !bill.receiptUrls.isEmpty()) {
-            receiptUrl = bill.receiptUrls.get(0);
-        }
-
-        if (receiptUrl != null && !receiptUrl.isEmpty()) {
-            Glide.with(this).load(receiptUrl)
-                    .placeholder(R.drawable.ic_image_placeholder)
-                    .into(ivReceipt);
-            cardReceipt.setVisibility(View.VISIBLE);
-        } else {
-            cardReceipt.setVisibility(View.GONE);
-        }
+//        String receiptUrl = bill.receiptUrl;
+//        if (bill.receiptUrls != null && !bill.receiptUrls.isEmpty()) {
+//            receiptUrl = bill.receiptUrls.get(0);
+//        }
+//
+//        if (receiptUrl != null && !receiptUrl.isEmpty()) {
+//            Glide.with(this).load(receiptUrl)
+//                    .placeholder(R.drawable.ic_image_placeholder)
+//                    .into(ivReceipt);
+//            cardReceipt.setVisibility(View.VISIBLE);
+        ivReceipt.setImageResource(R.drawable.ic_image_placeholder);
+//        } else {
+//            cardReceipt.setVisibility(View.GONE);
+//        }
 
         // 参与者列表
         List<ParticipantBalance> rows = buildParticipantRows(bill, payerName, currency);

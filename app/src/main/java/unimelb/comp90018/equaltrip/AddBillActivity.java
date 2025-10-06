@@ -96,6 +96,8 @@ public class AddBillActivity extends AppCompatActivity {
     // 经纬度，由 GPS 组件写入然后给Nominatim API用
     private double latitude = 0.0;
     private double longitude = 0.0;
+    private Long tripStartDateMs = null;
+    private Long tripEndDateMs = null;
 
 
     @Override
@@ -132,6 +134,43 @@ public class AddBillActivity extends AppCompatActivity {
 
         // Set default date
         tvDate.setText(dateFormat.format(calendar.getTime()));
+        loadTripDateRange();
+    }
+
+    private void loadTripDateRange() {
+        FirebaseFirestore.getInstance()
+                .collection("trips")
+                .document(tripId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        // 获取 startDate 和 endDate（存储为 Long 毫秒）
+                        Object startObj = documentSnapshot.get("startDate");
+                        Object endObj = documentSnapshot.get("endDate");
+
+                        if (startObj instanceof Long) {
+                            tripStartDateMs = (Long) startObj;
+                        } else if (startObj instanceof Number) {
+                            tripStartDateMs = ((Number) startObj).longValue();
+                        }
+
+                        if (endObj instanceof Long) {
+                            tripEndDateMs = (Long) endObj;
+                        } else if (endObj instanceof Number) {
+                            tripEndDateMs = ((Number) endObj).longValue();
+                        }
+
+                        // 如果获取到了日期范围，将默认日期设置为 trip 开始日期
+                        if (tripStartDateMs != null) {
+                            calendar.setTimeInMillis(tripStartDateMs);
+                            tvDate.setText(dateFormat.format(calendar.getTime()));
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to load trip dates: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void fetchCategoryFromNominatim(double lat, double lon) {
@@ -565,19 +604,54 @@ public class AddBillActivity extends AppCompatActivity {
     }
 
     private void showDatePicker() {
+        // 检查是否已加载 trip 日期范围
+        if (tripStartDateMs == null || tripEndDateMs == null) {
+            Toast.makeText(this, "Loading trip dates, please wait...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         DatePickerDialog datePickerDialog = new DatePickerDialog(
                 this,
                 (view, year, month, dayOfMonth) -> {
                     calendar.set(Calendar.YEAR, year);
                     calendar.set(Calendar.MONTH, month);
                     calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                    // 验证选择的日期是否在 trip 范围内
+                    long selectedMs = calendar.getTimeInMillis();
+                    if (selectedMs < tripStartDateMs || selectedMs > tripEndDateMs) {
+                        Toast.makeText(this,
+                                "Please select a date within the trip period",
+                                Toast.LENGTH_SHORT).show();
+                        // 重置为 trip 开始日期
+                        calendar.setTimeInMillis(tripStartDateMs);
+                    }
+
                     tvDate.setText(dateFormat.format(calendar.getTime()));
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
         );
+
+        // 设置日期选择器的最小和最大日期
+        datePickerDialog.getDatePicker().setMinDate(tripStartDateMs);
+        datePickerDialog.getDatePicker().setMaxDate(tripEndDateMs);
+
         datePickerDialog.show();
+//        DatePickerDialog datePickerDialog = new DatePickerDialog(
+//                this,
+//                (view, year, month, dayOfMonth) -> {
+//                    calendar.set(Calendar.YEAR, year);
+//                    calendar.set(Calendar.MONTH, month);
+//                    calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+//                    tvDate.setText(dateFormat.format(calendar.getTime()));
+//                },
+//                calendar.get(Calendar.YEAR),
+//                calendar.get(Calendar.MONTH),
+//                calendar.get(Calendar.DAY_OF_MONTH)
+//        );
+//        datePickerDialog.show();
     }
 
     private void validateAmount() {

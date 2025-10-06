@@ -220,42 +220,32 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Receipt Section -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardReceipt"
+            <LinearLayout
+                android:id="@+id/layoutReceipt"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp"
-                android:visibility="gone">
+                android:orientation="vertical">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/labelReceipt"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:text="Receipt"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:layout_marginBottom="8dp"/>
 
-                    <TextView
-                        android:id="@+id/labelReceipt"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Receipt"
-                        android:textStyle="bold"
-                        android:textSize="16sp"
-                        android:textColor="#000000"/>
+                <ImageView
+                    android:id="@+id/ivReceipt"
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
+                    android:scaleType="center"
+                    android:background="@drawable/bg_rounded"
+                    android:src="@drawable/ic_image_placeholder"/>
 
-                    <ImageView
-                        android:id="@+id/ivReceipt"
-                        android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:layout_marginTop="8dp"
-                        android:scaleType="centerCrop"
-                        android:background="@drawable/bg_rounded"
-                        android:src="@drawable/ic_image_placeholder"/>
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
             <ProgressBar
                 android:id="@+id/progress"
