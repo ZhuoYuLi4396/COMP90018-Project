@@ -45,6 +45,17 @@ import okhttp3.Response;
 // JSON 解析
 import org.json.JSONObject;
 
+// ML Kit - Text Recognition
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
+
+
+
+
 public class AddBillActivity extends AppCompatActivity {
     private EditText etBillName, etMerchant, etLocation, etAmount;
     private TextView tvDate, tvPaidBy, tvParticipants, tvTotalSplit;
@@ -97,11 +108,35 @@ public class AddBillActivity extends AppCompatActivity {
     private double latitude = 0.0;
     private double longitude = 0.0;
 
+    // === OCR Views ===
+    private View ocrOverlay;                // 半透明遮罩
+    private TextView tvOcrStatus;           // 遮罩上的“Recognizing…”
+    private LinearLayout layoutOcrResult;   // 蓝色结果条容器
+    private TextView tvOcrResult;           // 结果条文本
+    private Button btnRetryOcr;             // “Retry OCR”按钮
+
+    // === ML Kit Recognizers ===
+    private TextRecognizer latinRecognizer;
+    private TextRecognizer chineseRecognizer; // 备选（中文/混排更稳）
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_bill);
+
+        // === OCR Views ===
+        ocrOverlay     = findViewById(R.id.ocr_overlay);
+        tvOcrStatus    = findViewById(R.id.tv_ocr_status);
+        layoutOcrResult= findViewById(R.id.layout_ocr_result);
+        tvOcrResult    = findViewById(R.id.tv_ocr_result);
+        btnRetryOcr    = findViewById(R.id.btn_retry_ocr);
+
+        // === ML Kit Recognizers ===
+        latinRecognizer   = TextRecognition.getClient(new TextRecognizerOptions.Builder().build());
+        chineseRecognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
+
 
         // 在这里会拿到来自trip detail page中对应trip的tid
         // 逻辑是trip detail page点击某个卡片后一定会保存它的tid
@@ -367,6 +402,17 @@ public class AddBillActivity extends AppCompatActivity {
 
         // Create Bill button
         btnCreateBill.setOnClickListener(v -> createBill());
+
+        btnRetryOcr.setOnClickListener(v -> {
+            if (receiptUris.isEmpty()) {
+                Toast.makeText(this, "No receipt image to recognize", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // 这里选择“最后一张”或你想要的目标图
+            Uri target = receiptUris.get(receiptUris.size() - 1);
+            runOcrOnUri(target);
+        });
+
     }
 
     // 高精度分账算法
@@ -592,13 +638,27 @@ public class AddBillActivity extends AppCompatActivity {
         }
     }
 
+//    private void showReceiptOptions() {
+//        new AlertDialog.Builder(this)
+//                .setTitle("Add Receipt")
+//                .setItems(new String[]{"Take Photo", "Choose from Gallery"},
+//                        (dialog, which) -> {
+//                            if (which == 0) {
+//                                openCamera();
+//                            } else {
+//                                openGallery();
+//                            }
+//                        })
+//                .setNegativeButton("Cancel", null)
+//                .show();
+//    }
     private void showReceiptOptions() {
         new AlertDialog.Builder(this)
                 .setTitle("Add Receipt")
                 .setItems(new String[]{"Take Photo", "Choose from Gallery"},
                         (dialog, which) -> {
                             if (which == 0) {
-                                openCamera();
+                                tryOpenCamera();      // ✅ 改成先请求权限
                             } else {
                                 openGallery();
                             }
@@ -607,7 +667,8 @@ public class AddBillActivity extends AppCompatActivity {
                 .show();
     }
 
-//    private void openCamera() {
+
+    //    private void openCamera() {
 //        // In a real app, you would open camera intent here
 //        Toast.makeText(this, "Opening camera...", Toast.LENGTH_SHORT).show();
 //        showReceiptPreview();
@@ -891,6 +952,8 @@ public class AddBillActivity extends AppCompatActivity {
                     receiptUris.add(pendingCameraOutputUri);
                     pendingCameraOutputUri = null;
                     updateReceiptUI();
+                    // 拍完自动识图（只对本次新增的图）
+                    runOcrOnUri(receiptUris.get(receiptUris.size() - 1));
                 } else {
                     // 失败或用户取消，清掉临时文件（如果有）
                     cleanupIfTempFile(pendingCameraOutputUri);
@@ -946,6 +1009,8 @@ public class AddBillActivity extends AppCompatActivity {
                 // 加入列表并刷新
                 receiptUris.addAll(uris);
                 updateReceiptUI();
+                // 选图后也自动识图（以最后一张为例）
+                runOcrOnUri(receiptUris.get(receiptUris.size() - 1));
             });
 
 
@@ -1035,6 +1100,85 @@ public class AddBillActivity extends AppCompatActivity {
         return new ArrayList<>(receiptUris);
     }
 
+    // 启动识别时的 UI
+    private void startOcrUi() {
+        if (ocrOverlay != null) ocrOverlay.setVisibility(View.VISIBLE);
+        if (tvOcrStatus != null) tvOcrStatus.setText(getString(R.string.ocr_recognizing));
+        if (layoutOcrResult != null) layoutOcrResult.setVisibility(View.GONE);
+    }
+
+    // 成功后的 UI & 回填
+    private void finishOcrUiSuccess(ReceiptOcrParser.OcrResult r) {
+        if (ocrOverlay != null) ocrOverlay.setVisibility(View.GONE);
+        if (layoutOcrResult != null) layoutOcrResult.setVisibility(View.VISIBLE);
+        if (tvOcrResult != null) tvOcrResult.setText(r.toString());
+
+        // 回填三个字段（有值才填，避免覆盖用户输入）
+        if (r.merchant != null && !r.merchant.isEmpty()) etMerchant.setText(r.merchant);
+        if (r.totalAmount != null && !r.totalAmount.isEmpty()) {
+            etAmount.setText(r.totalAmount);
+            try { totalAmount = Double.parseDouble(r.totalAmount); } catch (Exception ignored) {}
+            updateSplitAmounts();
+        }
+        if (r.date != null && !r.date.isEmpty()) tvDate.setText(r.date);
+
+        Toast.makeText(this, getString(R.string.ocr_success), Toast.LENGTH_SHORT).show();
+    }
+
+    // 失败时的 UI
+    private void finishOcrUiFailure(Exception e) {
+        if (ocrOverlay != null) ocrOverlay.setVisibility(View.GONE);
+        if (layoutOcrResult != null) layoutOcrResult.setVisibility(View.GONE);
+        Toast.makeText(this, getString(R.string.ocr_failed), Toast.LENGTH_SHORT).show();
+        if (e != null) e.printStackTrace();
+    }
+
+    private void runOcrOnUri(Uri uri) {
+        if (uri == null) {
+            Toast.makeText(this, "Image Uri is null", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        startOcrUi();
+
+        try {
+            // 尝试从 Uri 构造 InputImage；EXIF 旋转 ML Kit 会处理
+            InputImage image = InputImage.fromFilePath(this, uri);
+
+            // 先用拉丁识别；若文本很空再尝试中文识别
+            latinRecognizer.process(image)
+                    .addOnSuccessListener(text -> {
+                        String full = (text != null) ? text.getText() : "";
+                        if (full == null || full.trim().isEmpty()) {
+                            // 备用：中文识别
+                            chineseRecognizer.process(image)
+                                    .addOnSuccessListener(textCN -> {
+                                        String fullCN = (textCN != null) ? textCN.getText() : "";
+                                        if (fullCN == null || fullCN.trim().isEmpty()) {
+                                            finishOcrUiFailure(null);
+                                        } else {
+                                            ReceiptOcrParser.OcrResult r = ReceiptOcrParser.parse(fullCN);
+                                            finishOcrUiSuccess(r);
+                                        }
+                                    })
+                                    .addOnFailureListener(this::finishOcrUiFailure);
+                        } else {
+                            ReceiptOcrParser.OcrResult r = ReceiptOcrParser.parse(full);
+                            finishOcrUiSuccess(r);
+                        }
+                    })
+                    .addOnFailureListener(this::finishOcrUiFailure);
+
+        } catch (Exception e) {
+            finishOcrUiFailure(e);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try { if (latinRecognizer != null) latinRecognizer.close(); } catch (Exception ignored) {}
+        try { if (chineseRecognizer != null) chineseRecognizer.close(); } catch (Exception ignored) {}
+    }
 
 
 

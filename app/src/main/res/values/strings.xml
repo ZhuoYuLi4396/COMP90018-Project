@@ -83,4 +83,15 @@
     <string name="add_participants">Add participants</string>
     <string name="participants_title">Tripmates in the trip</string>
 
+    <!-- ===== Receipt OCR & ML Kit ===== -->
+    <string name="ocr_recognizing">Recognizing receipt...</string>
+    <string name="ocr_success">Receipt recognized successfully</string>
+    <string name="ocr_failed">Failed to recognize receipt. Please try again.</string>
+    <string name="ocr_result_preview">Detected: %1$s · %2$s · $%3$s</string>
+    <string name="ocr_retry">Retry OCR</string>
+    <string name="ocr_apply">Apply recognized data</string>
+    <string name="ocr_preparing_model">Preparing recognition model...</string>
+    <string name="ocr_woolworths_detected">Woolworths receipt detected</string>
+
+
 </resources>
