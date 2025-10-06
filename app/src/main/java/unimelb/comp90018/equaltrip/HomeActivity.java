@@ -9,6 +9,8 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.NonNull;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -126,6 +128,14 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             Toast.makeText(this, "Map container (mapFragment) not found.", Toast.LENGTH_SHORT).show();
         }
 
+        // —— 主页 Add Bill：跳到“最新 Trip”的 AddBillActivity
+        findViewById(R.id.btnAddBill).setOnClickListener(v -> openAddBillForLatestTrip());
+
+        // —— 主页 New Trip：跳转到 AddTripActivity  ✅ 新增
+        findViewById(R.id.btnNewTrip).setOnClickListener(v -> {
+            startActivity(new Intent(this, AddTripActivity.class));
+        });
+
         // BottomNav —— 使用 include_bottom_nav 里的 @id/bottom_nav
         bottom = findViewById(R.id.bottom_nav);
         if (bottom != null) {
@@ -181,6 +191,10 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             suppressNav = true;
             bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
             bottom.post(() -> suppressNav = false);
+        }
+        // 如果因为内存或生命周期导致 bills 监听被移除，这里补挂一次，确保“刚添加完 bill 就能看到图钉”
+        if (activeTripId != null && billsRegTrip == null) {
+            attachBillsListenerForTrip(activeTripId);
         }
     }
 
@@ -290,7 +304,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (latestOwnerReg != null) { latestOwnerReg.remove(); latestOwnerReg = null; }
         if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
         detachBillsListener();
-
         // ★ 关键修复：清空 activeTripId，保证回到首页会强制重挂 bills 监听
         activeTripId = null;
     }
@@ -310,9 +323,9 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         String newId = (pick == null) ? null : pick.id;
 
         boolean sameTrip = (activeTripId != null && activeTripId.equals(newId));
-        // ★ 关键修复：如果 trip 相同但监听已被移除（例如 onStop() 后），也要强制重挂
+        // 若 trip 相同且监听还在，直接返回；否则强制重挂
         if (sameTrip && billsRegTrip != null) {
-            return; // 已有监听且 trip 未变化
+            return;
         }
 
         activeTripId = newId;
@@ -410,4 +423,83 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (title == null) title = "Bill";
         return title;
     }
+
+    // ---------------- 主页 Add Bill → 最新 Trip ----------------
+
+    private void openAddBillForLatestTrip() {
+        if (activeTripId != null && !activeTripId.trim().isEmpty()) {
+            Intent i = new Intent(this, AddBillActivity.class);
+            i.putExtra("tripId", activeTripId);
+            startActivity(i);
+            return;
+        }
+        fetchLatestTripIdOnce(newId -> {
+            if (newId != null && !newId.trim().isEmpty()) {
+                Intent i = new Intent(this, AddBillActivity.class);
+                i.putExtra("tripId", newId);
+                startActivity(i);
+            } else {
+                Toast.makeText(this, "No recent trip found. Create or open a trip first.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void fetchLatestTripIdOnce(SimpleCallback<String> cb) {
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        if (u == null) { cb.onResult(null); return; }
+
+        final String myUid = u.getUid();
+        final String myEmailLower = (u.getEmail() == null) ? "" : u.getEmail().toLowerCase(Locale.ROOT);
+
+        final java.util.concurrent.atomic.AtomicInteger pending = new java.util.concurrent.atomic.AtomicInteger(2);
+        final Trip[] ownerHolder   = new Trip[1];
+        final Trip[] invitedHolder = new Trip[1];
+
+        db.collection("trips")
+                .whereEqualTo("ownerId", myUid)
+                .orderBy("createdAtClient", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (snap != null && !snap.isEmpty()) {
+                        DocumentSnapshot d = snap.getDocuments().get(0);
+                        Trip t = d.toObject(Trip.class);
+                        if (t != null) { if (t.id == null) t.id = d.getId(); ownerHolder[0] = t; }
+                    }
+                })
+                .addOnCompleteListener(task -> {
+                    if (pending.decrementAndGet() == 0) {
+                        Trip pick = pickLatest(ownerHolder[0], invitedHolder[0]);
+                        cb.onResult(pick == null ? null : pick.id);
+                    }
+                });
+
+        db.collection("trips")
+                .whereArrayContains("tripmates", myEmailLower)
+                .orderBy("createdAtClient", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (snap != null && !snap.isEmpty()) {
+                        DocumentSnapshot d = snap.getDocuments().get(0);
+                        Trip t = d.toObject(Trip.class);
+                        if (t != null) { if (t.id == null) t.id = d.getId(); invitedHolder[0] = t; }
+                    }
+                })
+                .addOnCompleteListener(task -> {
+                    if (pending.decrementAndGet() == 0) {
+                        Trip pick = pickLatest(ownerHolder[0], invitedHolder[0]);
+                        cb.onResult(pick == null ? null : pick.id);
+                    }
+                });
+    }
+
+    @Nullable
+    private Trip pickLatest(@Nullable Trip owner, @Nullable Trip invited) {
+        long ot = (owner==null || owner.createdAtClient==null) ? Long.MIN_VALUE : owner.createdAtClient;
+        long it = (invited==null || invited.createdAtClient==null) ? Long.MIN_VALUE : invited.createdAtClient;
+        return (ot >= it) ? owner : invited;
+    }
+
+    private interface SimpleCallback<T> { void onResult(@Nullable T value); }
 }
