@@ -42,6 +42,10 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.UUID;
 
+import java.nio.ByteBuffer;
+import java.util.UUID;
+import android.text.TextUtils;
+
 /**
  * 只做两件事：
  * 1) startBroadcasting(ms)：作为 B 端广播 + 提供 GATT Server，Read 特征时返回当前 Firebase UID
@@ -65,6 +69,43 @@ public class BleUidExchange {
     public static final UUID CHAR_UID     = UUID.fromString("0000e012-0000-1000-8000-00805f9b34fb");
 
     private static final String TAG = "BleUidExchange";
+
+    // === 新增：默认扫描时长 60s ===
+    private static final long DEFAULT_SCAN_TIMEOUT_MS = 60_000L;
+
+    // === 新增：当前会话使用的 Service UUID（可能携带 PIN）===
+    // 初始为固定 SERVICE_UUID；开始“带 PIN 广播”时会临时改成带 PIN 的 UUID
+    private volatile UUID currentServiceUuid = SERVICE_UUID;
+
+    // === 新增：当前会话 PIN（可选，用于 UI 显示）===
+    private volatile String currentPin = null;
+
+    // 扫描端（客户端）在本次会话中应当寻找的 Service UUID；
+    // 扫描老 API 置 null；带 PIN 扫描置为 composeUuidWithPin(pin)
+    private volatile UUID expectedClientServiceUuid = null;
+
+    private ScanCallback activeScanCb = null;
+
+
+    // 生成 4 位 PIN（允许前导 0）
+    public String generateSessionPin() {
+        int n = new java.util.Random().nextInt(10_000); // 0..9999
+        return String.format(java.util.Locale.US, "%04d", n);
+    }
+
+    // 把 4 位 PIN 编到 UUID 的低 16 bit：保持 UUID 主体不变，只改末 2 字节
+    private UUID composeUuidWithPin(String pin4) {
+        if (pin4 == null || !pin4.matches("\\d{4}")) {
+            throw new IllegalArgumentException("PIN must be exactly 4 digits [0-9]");
+        }
+        int pinVal = Integer.parseInt(pin4); // 0..9999
+        long msb = SERVICE_UUID.getMostSignificantBits();
+        long lsb = SERVICE_UUID.getLeastSignificantBits();
+        // 清空低 16 位再写入 PIN
+        lsb = (lsb & 0xFFFFFFFFFFFF0000L) | (pinVal & 0xFFFF);
+        return new UUID(msb, lsb);
+    }
+
 
     public interface OnUidFoundListener {
         void onUidFound(String uid);      // 每发现一个对端 UID 就回调一次
@@ -103,19 +144,20 @@ public class BleUidExchange {
     }
 
     // ========= 对外：B 端开始广播 =========
+    // 发起带 PIN 的广播（推荐用这个；durationMs<=0 则持续广播直到手动 stop）
     @SuppressLint("MissingPermission")
-    public void startBroadcasting(long durationMs) {
+    public void startBroadcastingWithPin(String pin4, long durationMs) {
         if (!checkPrerequisitesForRadio(true)) return;
+        currentPin = pin4;
+        currentServiceUuid = composeUuidWithPin(pin4);
 
-        // 确保有 GATT Server
-        ensureGattServer();
-        // 启动 BLE 广播
+        // 用携带 PIN 的 UUID 重建 GATT Server
+        ensureGattServer(currentServiceUuid);
+
+        // 停止旧广告
         try { if (advertiser != null) advertiser.stopAdvertising(adCallback); } catch (Exception ignored) {}
         advertiser = adapter.getBluetoothLeAdvertiser();
-        if (advertiser == null) {
-            toast("无法获取 BLE Advertiser");
-            return;
-        }
+        if (advertiser == null) { toast("无法获取 BLE Advertiser"); return; }
 
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
@@ -125,14 +167,76 @@ public class BleUidExchange {
 
         AdvertiseData data = new AdvertiseData.Builder()
                 .setIncludeDeviceName(true)
-                .addServiceUuid(new ParcelUuid(SERVICE_UUID))
+                .addServiceUuid(new ParcelUuid(currentServiceUuid))
+                .build();
+
+        advertiser.startAdvertising(settings, data, adCallback);
+        if (durationMs > 0) mainH.postDelayed(this::stopAdvertisingSafe, durationMs);
+        toast("开始广播（PIN=" + pin4 + (durationMs > 0 ? ", 限时 " + (durationMs/1000) + "s" : ", 持续") + "）");
+    }
+
+    // B 端：用 PIN 扫描；durationMs<=0 则用默认 60s
+    @SuppressLint("MissingPermission")
+    public void startScanningWithPin(String pin4, long durationMs, OnUidFoundListener cb) {
+        if (!checkPrerequisitesForRadio(false)) return;
+
+        processedAddrs.clear();
+        queuedAddrs.clear();
+        connectQueue.clear();
+        isConnecting = false;
+
+        if (scanner == null) scanner = adapter.getBluetoothLeScanner();
+        if (scanner == null) { toast("无法获取 BLE Scanner"); return; }
+
+        UUID target = composeUuidWithPin(pin4);
+        expectedClientServiceUuid = target;  // 连接后按这个 UUID 去找 Service
+        ScanFilter filter = new ScanFilter.Builder()
+                .setServiceUuid(new ParcelUuid(target))
+                .build();
+        ScanSettings settings = new ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build();
+
+        isScanning = true;
+        long to = (durationMs > 0) ? durationMs : DEFAULT_SCAN_TIMEOUT_MS;
+
+        // 保存本次扫描的回调对象
+        activeScanCb = new InternalScan(cb, to);
+
+        // 用保存的回调启动扫描
+        scanner.startScan(Collections.singletonList(filter), settings, activeScanCb);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void startBroadcasting(long durationMs) {
+        if (!checkPrerequisitesForRadio(true)) return;
+
+        // 旧 API：用固定 UUID，不带 PIN
+        currentPin = null;
+        currentServiceUuid = SERVICE_UUID;
+
+        ensureGattServer(currentServiceUuid);
+
+        try { if (advertiser != null) advertiser.stopAdvertising(adCallback); } catch (Exception ignored) {}
+        advertiser = adapter.getBluetoothLeAdvertiser();
+        if (advertiser == null) { toast("无法获取 BLE Advertiser"); return; }
+
+        AdvertiseSettings settings = new AdvertiseSettings.Builder()
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+                .setConnectable(true)
+                .build();
+
+        AdvertiseData data = new AdvertiseData.Builder()
+                .setIncludeDeviceName(true)
+                .addServiceUuid(new ParcelUuid(currentServiceUuid))
                 .build();
 
         advertiser.startAdvertising(settings, data, adCallback);
         toast("开始广播 UID（限时 " + (durationMs/1000) + "s）");
-
         mainH.postDelayed(this::stopAdvertisingSafe, durationMs);
     }
+
 
     @SuppressLint("MissingPermission")
     private void stopAdvertisingSafe() {
@@ -165,6 +269,8 @@ public class BleUidExchange {
         connectQueue.clear();
         isConnecting = false;
 
+        expectedClientServiceUuid = null; // 用固定 SERVICE_UUID
+
         if (scanner == null) scanner = adapter.getBluetoothLeScanner();
         if (scanner == null) { toast("无法获取 BLE Scanner"); return; }
 
@@ -176,8 +282,12 @@ public class BleUidExchange {
                 .build();
 
         isScanning = true;
-        scanner.startScan(Collections.singletonList(filter), settings,
-                new InternalScan(cb, durationMs));
+
+        // 保存本次扫描的回调对象
+        activeScanCb = new InternalScan(cb, durationMs);
+
+        // 用保存的回调启动扫描
+        scanner.startScan(Collections.singletonList(filter), settings, activeScanCb);
     }
 
     private class InternalScan extends ScanCallback {
@@ -211,19 +321,23 @@ public class BleUidExchange {
             stopScanSafe(this);
             isScanning = false;
             cb.onScanFinished();
+            expectedClientServiceUuid = null;   // 扫描失败后重置
         }
     }
 
     @SuppressLint("MissingPermission")
     private void stopScanSafe(ScanCallback cb) {
+        ScanCallback real = (cb != null) ? cb : activeScanCb;
         try {
-            if (scanner != null &&
+            if (scanner != null && real != null &&
                     (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-                            ActivityCompat.checkSelfPermission(app, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED)) {
-                scanner.stopScan(cb);
+                            ActivityCompat.checkSelfPermission(app, Manifest.permission.BLUETOOTH_SCAN)
+                                    == PackageManager.PERMISSION_GRANTED)) {
+                scanner.stopScan(real);
             }
         } catch (Exception ignored) {}
     }
+
 
     // ========= 串行连接 =========
     @SuppressLint("MissingPermission")
@@ -231,9 +345,13 @@ public class BleUidExchange {
         if (isConnecting) return;
 
         if (connectQueue.isEmpty()) {
-            if (!isScanning) cb.onScanFinished();
+            if (!isScanning) {
+                cb.onScanFinished();
+                expectedClientServiceUuid = null;   // 扫描流程结束后重置
+            }
             return;
         }
+
         if (!hasAllPerms()) return;
 
         final BluetoothDevice device = connectQueue.poll();
@@ -266,7 +384,8 @@ public class BleUidExchange {
                 }
                 @Override public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                     if (status != BluetoothGatt.GATT_SUCCESS) { cleanupThenNext(gatt, timeout, addr, cb, scanCb); return; }
-                    BluetoothGattService svc = gatt.getService(SERVICE_UUID);
+                    UUID svcUuidToFind = (expectedClientServiceUuid != null) ? expectedClientServiceUuid : SERVICE_UUID;
+                    BluetoothGattService svc = gatt.getService(svcUuidToFind);
                     if (svc == null) { cleanupThenNext(gatt, timeout, addr, cb, scanCb); return; }
                     BluetoothGattCharacteristic cUid = svc.getCharacteristic(CHAR_UID);
                     if (cUid == null) { cleanupThenNext(gatt, timeout, addr, cb, scanCb); return; }
@@ -308,47 +427,55 @@ public class BleUidExchange {
 
     // ========= GATT Server（返回当前 Firebase UID）=========
     @SuppressLint("MissingPermission")
-    private void ensureGattServer() {
-        if (gattServer != null) return;
+    private void ensureGattServer(UUID svcUuid) {
         try {
-            BluetoothManager bm = (BluetoothManager) app.getSystemService(Context.BLUETOOTH_SERVICE);
-            gattServer = bm.openGattServer(app, new BluetoothGattServerCallback() {
-                private volatile int mtu = 23;
-
-                @Override public void onMtuChanged(BluetoothDevice device, int mtu) {
-                    this.mtu = mtu;
+            // 若尚未创建，或上次 UUID 与目标不同，则重建
+            boolean needRebuild = (gattServer == null);
+            if (!needRebuild && svcUuid != null) {
+                // 简单判断：如果 Service 不存在或 UUID 不同就重建
+                BluetoothGattService existing = gattServer.getService(svcUuid);
+                if (existing == null) {
+                    needRebuild = true;
                 }
+            }
 
-                @Override
-                public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
-                                                        BluetoothGattCharacteristic characteristic) {
-                    byte[] full;
-                    if (CHAR_UID.equals(characteristic.getUuid())) {
-                        full = getMyUidBytes();
-                    } else {
-                        full = new byte[0];
+            if (needRebuild) {
+                if (gattServer != null) {
+                    try { gattServer.close(); } catch (Exception ignored) {}
+                    gattServer = null;
+                }
+                BluetoothManager bm = (BluetoothManager) app.getSystemService(Context.BLUETOOTH_SERVICE);
+                gattServer = bm.openGattServer(app, new BluetoothGattServerCallback() {
+                    private volatile int mtu = 23;
+                    @Override public void onMtuChanged(BluetoothDevice device, int mtu) { this.mtu = mtu; }
+                    @Override
+                    public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
+                                                            BluetoothGattCharacteristic characteristic) {
+                        byte[] full = CHAR_UID.equals(characteristic.getUuid())
+                                ? getMyUidBytes() : new byte[0];
+                        int mtuPayload = Math.max(20, mtu - 1);
+                        int end = Math.min(full.length, offset + mtuPayload);
+                        byte[] slice = Arrays.copyOfRange(full, offset, end);
+                        try { gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, slice); }
+                        catch (SecurityException ignored) {}
                     }
-                    int mtuPayload = Math.max(20, mtu - 1);
-                    int end = Math.min(full.length, offset + mtuPayload);
-                    byte[] slice = Arrays.copyOfRange(full, offset, end);
-                    try {
-                        gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, slice);
-                    } catch (SecurityException ignored) {}
-                }
-            });
+                });
 
-            BluetoothGattService svc = new BluetoothGattService(SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
-            BluetoothGattCharacteristic cUid = new BluetoothGattCharacteristic(
-                    CHAR_UID,
-                    BluetoothGattCharacteristic.PROPERTY_READ,
-                    BluetoothGattCharacteristic.PERMISSION_READ
-            );
-            svc.addCharacteristic(cUid);
-            gattServer.addService(svc);
+                if (svcUuid == null) svcUuid = SERVICE_UUID;
+                BluetoothGattService svc = new BluetoothGattService(svcUuid, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+                BluetoothGattCharacteristic cUid = new BluetoothGattCharacteristic(
+                        CHAR_UID,
+                        BluetoothGattCharacteristic.PROPERTY_READ,
+                        BluetoothGattCharacteristic.PERMISSION_READ
+                );
+                svc.addCharacteristic(cUid);
+                gattServer.addService(svc);
+            }
         } catch (Exception e) {
             Log.d(TAG, "ensureGattServer err: " + e.getMessage());
         }
     }
+
 
     private byte[] getMyUidBytes() {
         String uid = FirebaseAuth.getInstance().getUid(); // 可能为 null（未登录）
@@ -427,32 +554,44 @@ public class BleUidExchange {
     // ========= 清理 =========
     @SuppressLint("MissingPermission")
     public void onDestroy() {
+        // ==== 停止广播 ====
         try {
             if (advertiser != null &&
                     (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-                            ActivityCompat.checkSelfPermission(app, Manifest.permission.BLUETOOTH_ADVERTISE) == PackageManager.PERMISSION_GRANTED)) {
+                            ActivityCompat.checkSelfPermission(app, Manifest.permission.BLUETOOTH_ADVERTISE)
+                                    == PackageManager.PERMISSION_GRANTED)) {
                 advertiser.stopAdvertising(adCallback);
             }
         } catch (Exception ignored) {}
         advertiser = null;
 
+        // ==== 停止扫描 ====
         try {
-            if (scanner != null &&
-                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-                            ActivityCompat.checkSelfPermission(app, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED)) {
-                scanner.stopScan(new ScanCallback(){});
-            }
+            stopScanSafe(null);   // 用保存下来的 activeScanCb 停止真正的扫描
         } catch (Exception ignored) {}
         scanner = null;
+        activeScanCb = null;
+        isScanning = false;
 
+        // ==== 断开并关闭 GATT 连接 ====
         safeCloseGatt(activeGatt);
         activeGatt = null;
+        isConnecting = false;
 
+        // ==== 关闭 GATT Server ====
         try {
             if (gattServer != null) gattServer.close(); // close 不需要额外权限
         } catch (Exception ignored) {}
         gattServer = null;
+
+        // ==== 重置会话状态 ====
+        expectedClientServiceUuid = null;
+        currentServiceUuid = SERVICE_UUID;
+        currentPin = null;
+
+        Log.d(TAG, "BLE resources released in onDestroy()");
     }
+
 
     // ===== 权限与蓝牙状态辅助 =====
     private boolean hasConnectPerm() {

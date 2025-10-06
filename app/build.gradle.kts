@@ -78,11 +78,18 @@ dependencies {
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0") // Nominatim API
     implementation("com.google.firebase:firebase-storage") // Firebase storage依赖
+
+
+    implementation("com.google.mlkit:text-recognition:16.0.1")  // ML Kit 本地文字识别（拉丁语系：英文/数字等）
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")// 如需更稳地识别中文小票（可选，但建议加）
+
+
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+
 }
 
 

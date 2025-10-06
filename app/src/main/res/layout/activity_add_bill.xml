@@ -380,6 +380,69 @@
                             app:tint="#666666" />
                     </LinearLayout>
                 </RelativeLayout>
+
+                <!-- === OCR recognition overlay === -->
+                <FrameLayout
+                    android:id="@+id/ocr_overlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#80000000"
+                    android:visibility="gone"
+                    android:gravity="center">
+
+                    <ProgressBar
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:indeterminate="true" />
+
+                    <TextView
+                        android:id="@+id/tv_ocr_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal|bottom"
+                        android:layout_marginBottom="16dp"
+                        android:text="@string/ocr_recognizing"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp" />
+                </FrameLayout>
+
+                <!-- === OCR result bar === -->
+                <LinearLayout
+                    android:id="@+id/layout_ocr_result"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="#E8F0FE"
+                    android:gravity="center_vertical"
+                    android:padding="8dp"
+                    android:visibility="gone"
+                    android:layout_gravity="bottom">
+
+                    <TextView
+                        android:id="@+id/tv_ocr_result"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textColor="#1A73E8"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:singleLine="true"
+                        android:ellipsize="end"
+                        android:text="Detected: Woolworths · 2025-09-25 · $20.50" />
+
+                    <Button
+                        android:id="@+id/btn_retry_ocr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/ocr_retry"
+                        android:textSize="12sp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="6dp"
+                        android:backgroundTint="@color/primary_blue"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
             </FrameLayout>
 
             <!-- Amount -->
