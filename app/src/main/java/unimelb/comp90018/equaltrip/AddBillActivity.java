@@ -119,6 +119,11 @@ public class AddBillActivity extends AppCompatActivity {
     private TextRecognizer latinRecognizer;
     private TextRecognizer chineseRecognizer; // 备选（中文/混排更稳）
 
+    // 控制下一次操作是否要自动识图
+    private boolean ocrAfterNextCapture = false;
+    private boolean ocrAfterNextGalleryPick = false;
+
+
 
 
     @Override
@@ -339,17 +344,21 @@ public class AddBillActivity extends AppCompatActivity {
         findViewById(R.id.layout_date).setOnClickListener(v -> showDatePicker());
 
         // Receipt handling
-        layoutReceipt.setOnClickListener(v -> {
-            if (!hasReceipt) {
-                showReceiptOptions();
-            }
-        });
+//        layoutReceipt.setOnClickListener(v -> {
+//            if (!hasReceipt) {
+//                showReceiptOptions();
+//            }
+//        });
+        layoutReceipt.setOnClickListener(v -> showReceiptOptions());
+//        btnReceiptCamera.setOnClickListener(v -> tryOpenCamera());
+//        btnReceiptGallery.setOnClickListener(v -> openGallery());
+        // ② 顶部按钮别再直达相机/相册，而是同样弹出选择
+// 原来：btnReceiptCamera.setOnClickListener(v -> tryOpenCamera());
+        btnReceiptCamera.setOnClickListener(v -> showReceiptOptions());
 
-        btnReceiptCamera.setOnClickListener(v -> tryOpenCamera());
-        //btnReceiptCamera.setOnClickListener(v -> openCamera());
-        btnReceiptGallery.setOnClickListener(v -> openGallery());
-        //btnRemoveReceipt.setOnClickListener(v -> removeReceipt());
-        //btnRemoveReceipt.setOnClickListener(v -> removeAllReceipts());
+// 原来：btnReceiptGallery.setOnClickListener(v -> openGallery());
+        btnReceiptGallery.setOnClickListener(v -> showReceiptOptions());
+
 
         // Amount input validation and split calculation
         etAmount.addTextChangedListener(new TextWatcher() {
@@ -655,17 +664,35 @@ public class AddBillActivity extends AppCompatActivity {
     private void showReceiptOptions() {
         new AlertDialog.Builder(this)
                 .setTitle("Add Receipt")
-                .setItems(new String[]{"Take Photo", "Choose from Gallery"},
-                        (dialog, which) -> {
-                            if (which == 0) {
-                                tryOpenCamera();      // ✅ 改成先请求权限
-                            } else {
-                                openGallery();
-                            }
-                        })
+                .setItems(new String[]{
+                        "Take Photo",
+                        "Choose from Gallery",
+                        "Scan & Autofill (Camera)",
+                        "Scan & Autofill (Gallery)"
+                }, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // 普通拍照（不识图）
+                            ocrAfterNextCapture = false;
+                            tryOpenCamera();
+                            break;
+                        case 1: // 普通相册（不识图）
+                            ocrAfterNextGalleryPick = false;
+                            openGallery();
+                            break;
+                        case 2: // 拍照并识图
+                            ocrAfterNextCapture = true;
+                            tryOpenCamera();
+                            break;
+                        case 3: // 相册并识图（单选即可）
+                            ocrAfterNextGalleryPick = true;
+                            openGalleryForOcrSingle();
+                            break;
+                    }
+                })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
+
 
 
     //    private void openCamera() {
@@ -949,17 +976,22 @@ public class AddBillActivity extends AppCompatActivity {
     private final ActivityResultLauncher<Uri> takePictureLauncher =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (success && pendingCameraOutputUri != null) {
-                    receiptUris.add(pendingCameraOutputUri);
+                    Uri justTaken = pendingCameraOutputUri;
+                    receiptUris.add(justTaken);
                     pendingCameraOutputUri = null;
                     updateReceiptUI();
-                    // 拍完自动识图（只对本次新增的图）
-                    runOcrOnUri(receiptUris.get(receiptUris.size() - 1));
+
+                    // ★ 只有当选择了“Scan & Autofill (Camera)”时才识图
+                    if (ocrAfterNextCapture) {
+                        ocrAfterNextCapture = false; // 用完即清
+                        runOcrOnUri(justTaken);
+                    }
                 } else {
-                    // 失败或用户取消，清掉临时文件（如果有）
                     cleanupIfTempFile(pendingCameraOutputUri);
                     pendingCameraOutputUri = null;
                 }
             });
+
 
     // 根据列表是否为空切换 placeholder/preview，并刷新列表
     void updateReceiptUI() {
@@ -998,7 +1030,6 @@ public class AddBillActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String[]> pickImagesLauncher =
             registerForActivityResult(new ActivityResultContracts.OpenMultipleDocuments(), uris -> {
                 if (uris == null || uris.isEmpty()) return;
-                // 申请持久读权限（重启后依然可读）
                 for (Uri uri : uris) {
                     try {
                         getContentResolver().takePersistableUriPermission(
@@ -1006,12 +1037,34 @@ public class AddBillActivity extends AppCompatActivity {
                         );
                     } catch (Exception ignored) {}
                 }
-                // 加入列表并刷新
                 receiptUris.addAll(uris);
                 updateReceiptUI();
-                // 选图后也自动识图（以最后一张为例）
-                runOcrOnUri(receiptUris.get(receiptUris.size() - 1));
+                // ★ 不再自动识图
             });
+
+    private final ActivityResultLauncher<String> pickOneImageForOcr =
+            registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+                if (uri == null) return;
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    );
+                } catch (Exception ignored) {}
+                receiptUris.add(uri);
+                updateReceiptUI();
+
+                if (ocrAfterNextGalleryPick) {
+                    ocrAfterNextGalleryPick = false;
+                    runOcrOnUri(uri);
+                }
+            });
+
+    // 简单封装一下调用
+    private void openGalleryForOcrSingle() {
+        pickOneImageForOcr.launch("image/*");
+    }
+
+
 
 
     // 如果是 app 专属目录文件，把它删掉（相册里不会有）
@@ -1108,12 +1161,30 @@ public class AddBillActivity extends AppCompatActivity {
     }
 
     // 成功后的 UI & 回填
+//    private void finishOcrUiSuccess(ReceiptOcrParser.OcrResult r) {
+//        if (ocrOverlay != null) ocrOverlay.setVisibility(View.GONE);
+//        if (layoutOcrResult != null) layoutOcrResult.setVisibility(View.VISIBLE);
+//        if (tvOcrResult != null) tvOcrResult.setText(r.toString());
+//
+//        // 回填三个字段（有值才填，避免覆盖用户输入）
+//        if (r.merchant != null && !r.merchant.isEmpty()) etMerchant.setText(r.merchant);
+//        if (r.totalAmount != null && !r.totalAmount.isEmpty()) {
+//            etAmount.setText(r.totalAmount);
+//            try { totalAmount = Double.parseDouble(r.totalAmount); } catch (Exception ignored) {}
+//            updateSplitAmounts();
+//        }
+//        if (r.date != null && !r.date.isEmpty()) tvDate.setText(r.date);
+//
+//        Toast.makeText(this, getString(R.string.ocr_success), Toast.LENGTH_SHORT).show();
+//    }
     private void finishOcrUiSuccess(ReceiptOcrParser.OcrResult r) {
         if (ocrOverlay != null) ocrOverlay.setVisibility(View.GONE);
-        if (layoutOcrResult != null) layoutOcrResult.setVisibility(View.VISIBLE);
+        if (layoutOcrResult != null) {
+            layoutOcrResult.setVisibility(View.VISIBLE);
+            layoutOcrResult.setOnClickListener(v -> layoutOcrResult.setVisibility(View.GONE)); // ← 点击收起
+        }
         if (tvOcrResult != null) tvOcrResult.setText(r.toString());
 
-        // 回填三个字段（有值才填，避免覆盖用户输入）
         if (r.merchant != null && !r.merchant.isEmpty()) etMerchant.setText(r.merchant);
         if (r.totalAmount != null && !r.totalAmount.isEmpty()) {
             etAmount.setText(r.totalAmount);
@@ -1123,7 +1194,15 @@ public class AddBillActivity extends AppCompatActivity {
         if (r.date != null && !r.date.isEmpty()) tvDate.setText(r.date);
 
         Toast.makeText(this, getString(R.string.ocr_success), Toast.LENGTH_SHORT).show();
+
+        // ← 自动隐藏（2.5 秒）
+        new android.os.Handler(android.os.Looper.getMainLooper())
+                .postDelayed(() -> {
+                    if (!isFinishing() && !isDestroyed() && layoutOcrResult != null)
+                        layoutOcrResult.setVisibility(View.GONE);
+                }, 2500);
     }
+
 
     // 失败时的 UI
     private void finishOcrUiFailure(Exception e) {
