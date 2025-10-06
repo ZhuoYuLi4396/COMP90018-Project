@@ -73,6 +73,8 @@ public class EditBillActivity extends AppCompatActivity {
     private Uri pendingCameraOutputUri = null;
 
     private FirebaseFirestore db;
+    private Long tripStartDateMs = null;
+    private Long tripEndDateMs = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,6 +98,7 @@ public class EditBillActivity extends AppCompatActivity {
         setupSpinners();
         setupCategoryButtons();
         setupSplitRecyclerView();
+        loadTripDateRange();
 
         loadBillData();
     }
@@ -130,6 +133,36 @@ public class EditBillActivity extends AppCompatActivity {
                             Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "Load bill failed", e);
                     finish();
+                });
+    }
+
+    private void loadTripDateRange() {
+        FirebaseFirestore.getInstance()
+                .collection("trips")
+                .document(tripId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        // Get startDate and endDate (stored as Long milliseconds)
+                        Object startObj = documentSnapshot.get("startDate");
+                        Object endObj = documentSnapshot.get("endDate");
+
+                        if (startObj instanceof Long) {
+                            tripStartDateMs = (Long) startObj;
+                        } else if (startObj instanceof Number) {
+                            tripStartDateMs = ((Number) startObj).longValue();
+                        }
+
+                        if (endObj instanceof Long) {
+                            tripEndDateMs = (Long) endObj;
+                        } else if (endObj instanceof Number) {
+                            tripEndDateMs = ((Number) endObj).longValue();
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to load trip dates: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -583,19 +616,54 @@ public class EditBillActivity extends AppCompatActivity {
     }
 
     private void showDatePicker() {
+        // Check if trip date range is loaded
+        if (tripStartDateMs == null || tripEndDateMs == null) {
+            Toast.makeText(this, "Loading trip dates, please wait...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         DatePickerDialog datePickerDialog = new DatePickerDialog(
                 this,
                 (view, year, month, dayOfMonth) -> {
                     calendar.set(Calendar.YEAR, year);
                     calendar.set(Calendar.MONTH, month);
                     calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                    // Validate the selected date is within trip range
+                    long selectedMs = calendar.getTimeInMillis();
+                    if (selectedMs < tripStartDateMs || selectedMs > tripEndDateMs) {
+                        Toast.makeText(this,
+                                "Please select a date within the trip period",
+                                Toast.LENGTH_SHORT).show();
+                        // Reset to trip start date
+                        calendar.setTimeInMillis(tripStartDateMs);
+                    }
+
                     tvDate.setText(dateFormat.format(calendar.getTime()));
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
         );
+
+        // Set min and max dates on the date picker
+        datePickerDialog.getDatePicker().setMinDate(tripStartDateMs);
+        datePickerDialog.getDatePicker().setMaxDate(tripEndDateMs);
+
         datePickerDialog.show();
+//        DatePickerDialog datePickerDialog = new DatePickerDialog(
+//                this,
+//                (view, year, month, dayOfMonth) -> {
+//                    calendar.set(Calendar.YEAR, year);
+//                    calendar.set(Calendar.MONTH, month);
+//                    calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+//                    tvDate.setText(dateFormat.format(calendar.getTime()));
+//                },
+//                calendar.get(Calendar.YEAR),
+//                calendar.get(Calendar.MONTH),
+//                calendar.get(Calendar.DAY_OF_MONTH)
+//        );
+//        datePickerDialog.show();
     }
 
     private void showReceiptOptions() {
@@ -790,7 +858,9 @@ public class EditBillActivity extends AppCompatActivity {
         billData.put("currency", spinnerCurrency.getSelectedItem().toString());
         billData.put("paidBy", selectedPayerUid);
         billData.put("participants", new ArrayList<>(selectedParticipantUids));
-        billData.put("updatedAt", Timestamp.now());
+        billData.put("createdAt", new Timestamp(calendar.getTime()));
+        billData.put("date", new Timestamp(calendar.getTime()));
+//        billData.put("updatedAt", Timestamp.now());
 
         List<Map<String, Object>> debtsList = new ArrayList<>();
         for (ParticipantSplit split : participantSplits) {

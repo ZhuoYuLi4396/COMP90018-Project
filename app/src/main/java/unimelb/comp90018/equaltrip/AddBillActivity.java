@@ -861,7 +861,10 @@ public class AddBillActivity extends AppCompatActivity {
         billData.put("currency", spinnerCurrency.getSelectedItem().toString());  // 存到 Firestore
         billData.put("paidBy", selectedPayerUid); // ⚠️存 uid，而不是 username
         billData.put("participants", new ArrayList<>(selectedParticipantUids));
-        billData.put("createdAt", Timestamp.now());
+//        billData.put("createdAt", Timestamp.now());
+        // 使用用户选择的日期而不是当前时间
+        billData.put("createdAt", new Timestamp(calendar.getTime()));
+        billData.put("date", new Timestamp(calendar.getTime())); // 也保存到date字段以兼容
 
         // 构建 debts 列表
         List<Map<String, Object>> debtsList = new ArrayList<>();
