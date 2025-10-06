@@ -151,6 +151,17 @@
         </activity>
 
         <activity
+            android:name=".BillDetailActivity"
+            android:exported="true">  <!-- 根据需求设置为 true 或 false -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".EditBillActivity" />
+
+        <activity
             android:name=".AddBillActivity"
             android:exported="false" />
 
