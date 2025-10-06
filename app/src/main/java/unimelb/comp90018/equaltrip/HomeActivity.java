@@ -23,8 +23,11 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.HashMap;
@@ -37,25 +40,30 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private static final int RC_LOCATION = 201;
 
-    // 顶部信息
     private TextView tvUsername, tvOngoingTripsNum, tvUnpaidBillsNum;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
-    // 底部导航辅助
-    private boolean suppressNav = false;
+    // Bottom nav
     private BottomNavigationView bottom;
+    private boolean suppressNav = false;
 
-    // 地图
+    // Map
     private GoogleMap gmap;
     private boolean mapReady = false;
 
-    // Firestore 实时监听（两路：我参与、我支付）
-    @Nullable private ListenerRegistration billsRegParticipants = null;
-    @Nullable private ListenerRegistration billsRegPayer = null;
+    // ---- 最新 trip 选择 & 监听 ----
+    @Nullable private ListenerRegistration latestOwnerReg = null;
+    @Nullable private ListenerRegistration latestInvitedReg = null;
+    @Nullable private ListenerRegistration billsRegTrip   = null;
 
-    // 合并容器：docPath -> LatLng/Title
+    @Nullable private Trip ownerLatest = null;
+    @Nullable private Trip invitedLatest = null;
+
+    @Nullable private String activeTripId = null; // 当前已附着 bills 监听的 tripId
+
+    // markers 合并容器：docPath -> LatLng/Title
     private final Map<String, LatLng> currentMarkers = new HashMap<>();
     private final Map<String, String> currentTitles  = new HashMap<>();
 
@@ -64,7 +72,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        // 绑定视图
+        // 顶部文案
         tvUsername        = findViewById(R.id.tvUsername);
         tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
         tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
@@ -80,7 +88,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
-        // 顶部文案
+        // 顶部示例文案
         tvOngoingTripsNum.setText(" 2 ");
         tvUnpaidBillsNum.setText("6 ");
         String name = currentUser.getDisplayName();
@@ -109,32 +117,28 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "Failed to load profile.", Toast.LENGTH_SHORT).show());
 
-        // 地图
+        // Map
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapFragment);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         } else {
-            Toast.makeText(this, "Map container (mapFragment) not found in layout.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Map container (mapFragment) not found.", Toast.LENGTH_SHORT).show();
         }
 
-        // BottomNav —— 兼容 bottom_nav / bottomNav 两种 id
+        // BottomNav —— 使用 include_bottom_nav 里的 @id/bottom_nav
         bottom = findViewById(R.id.bottom_nav);
-        if (bottom == null) bottom = findViewById(R.id.bottomNav);
-
         if (bottom != null) {
             bottom.setOnItemSelectedListener(item -> {
                 if (suppressNav) return true; // 程序化高亮时不导航
                 int id = item.getItemId();
                 if (id == R.id.nav_home) return true;
-
                 if (id == R.id.nav_profile) {
                     startActivity(new Intent(this, ProfileActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                     overridePendingTransition(0, 0);
                     return true;
                 }
-
                 if (id == R.id.nav_trips) {
                     startActivity(new Intent(this, TripPageActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
@@ -143,12 +147,10 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
                 return false;
             });
-
-            // 程序化高亮 Home（不触发导航）
+            // 程序化高亮 Home
             suppressNav = true;
             bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
             bottom.post(() -> suppressNav = false);
-
             bottom.setOnItemReselectedListener(item -> { /* no-op */ });
         }
     }
@@ -156,13 +158,33 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onStart() {
         super.onStart();
-        // 回到首页时，如果地图已就绪，就重新挂监听，立刻能收到新 bill 更新
-        if (mapReady && gmap != null) {
-            startListeningMyBills();
+        // 回到首页时，开始监听“我最新的 trip”，并据此附着 bills 监听
+        startWatchingLatestTrip();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stopWatchingLatestTrip();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopWatchingLatestTrip();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (bottom != null) {
+            suppressNav = true;
+            bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
+            bottom.post(() -> suppressNav = false);
         }
     }
 
-    // 地图就绪
+    // ---------------- Map ----------------
     @Override
     public void onMapReady(GoogleMap map) {
         gmap = map;
@@ -177,90 +199,170 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(melbourne, 12f));
         gmap.addMarker(new MarkerOptions().position(melbourne).title("Melbourne"));
 
-        // 蓝点
         enableMyLocationIfGranted();
-
-        // 首次地图就绪也挂一次
-        startListeningMyBills();
     }
 
-    // —— 两路监听：我参与 + 我支付 —— //
-    private void startListeningMyBills() {
+    private void enableMyLocationIfGranted() {
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+
+        if (fine || coarse) {
+            actuallyEnableMyLocation();
+        } else {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    RC_LOCATION
+            );
+        }
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private void actuallyEnableMyLocation() {
+        if (gmap != null) gmap.setMyLocationEnabled(true);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] perms, @NonNull int[] res) {
+        super.onRequestPermissionsResult(requestCode, perms, res);
+        if (requestCode == RC_LOCATION) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) {
+                actuallyEnableMyLocation();
+            } else {
+                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    // ---------------- 最新 trip 选择 + bills 监听 ----------------
+
+    private void startWatchingLatestTrip() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null || gmap == null) return;
+        if (user == null) return;
 
-        String myUid = user.getUid();
+        final String myUid = user.getUid();
+        final String myEmailLower = (user.getEmail() == null) ? "" : user.getEmail().toLowerCase(Locale.ROOT);
 
-        // 先清旧监听，避免重复
-        stopListeningMyBills();
+        // 先解绑旧的“最新 trip”监听，避免重复
+        if (latestOwnerReg != null) { latestOwnerReg.remove(); latestOwnerReg = null; }
+        if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
 
+        // owner 最新 1 条
+        latestOwnerReg = db.collection("trips")
+                .whereEqualTo("ownerId", myUid)
+                .orderBy("createdAtClient", Query.Direction.DESCENDING)
+                .limit(1)
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null) return;
+                    ownerLatest = null;
+                    for (DocumentSnapshot d : snap.getDocuments()) {
+                        Trip t = d.toObject(Trip.class);
+                        if (t != null) {
+                            if (t.id == null) t.id = d.getId();
+                            ownerLatest = t;
+                        }
+                    }
+                    decideActiveTripAndAttach(ownerLatest, invitedLatest);
+                });
+
+        // 被邀请（按邮箱）最新 1 条
+        latestInvitedReg = db.collection("trips")
+                .whereArrayContains("tripmates", myEmailLower)
+                .orderBy("createdAtClient", Query.Direction.DESCENDING)
+                .limit(1)
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null || snap == null) return;
+                    invitedLatest = null;
+                    for (DocumentSnapshot d : snap.getDocuments()) {
+                        Trip t = d.toObject(Trip.class);
+                        if (t != null) {
+                            if (t.id == null) t.id = d.getId();
+                            invitedLatest = t;
+                        }
+                    }
+                    decideActiveTripAndAttach(ownerLatest, invitedLatest);
+                });
+    }
+
+    private void stopWatchingLatestTrip() {
+        if (latestOwnerReg != null) { latestOwnerReg.remove(); latestOwnerReg = null; }
+        if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
+        detachBillsListener();
+
+        // ★ 关键修复：清空 activeTripId，保证回到首页会强制重挂 bills 监听
+        activeTripId = null;
+    }
+
+    private void detachBillsListener() {
+        if (billsRegTrip != null) {
+            billsRegTrip.remove();
+            billsRegTrip = null;
+        }
+    }
+
+    private void decideActiveTripAndAttach(@Nullable Trip owner, @Nullable Trip invited) {
+        long ownerTs  = (owner   == null || owner.createdAtClient   == null) ? Long.MIN_VALUE : owner.createdAtClient;
+        long invitTs  = (invited == null || invited.createdAtClient == null) ? Long.MIN_VALUE : invited.createdAtClient;
+        Trip pick = (ownerTs >= invitTs) ? owner : invited;
+
+        String newId = (pick == null) ? null : pick.id;
+
+        boolean sameTrip = (activeTripId != null && activeTripId.equals(newId));
+        // ★ 关键修复：如果 trip 相同但监听已被移除（例如 onStop() 后），也要强制重挂
+        if (sameTrip && billsRegTrip != null) {
+            return; // 已有监听且 trip 未变化
+        }
+
+        activeTripId = newId;
+        attachBillsListenerForTrip(activeTripId);
+    }
+
+    private void attachBillsListenerForTrip(@Nullable String tripId) {
+        // 先解绑旧的
+        detachBillsListener();
+
+        // 清空地图标记缓存
         currentMarkers.clear();
         currentTitles.clear();
+        redrawAllMarkers();
 
-        // A. 我参与的
-        billsRegParticipants = db.collectionGroup("bills")
-                .whereArrayContains("participants", myUid)
-                .addSnapshotListener((snap, err) -> {
-                    if (err != null || snap == null) return;
+        if (tripId == null || tripId.trim().isEmpty()) return;
 
-                    Set<String> alive = new HashSet<>();
-                    for (QueryDocumentSnapshot doc : snap) {
-                        String key = doc.getReference().getPath();
-                        alive.add(key);
-                        LatLng p = extractLatLng(doc.get("geo"));
-                        if (p != null) {
-                            currentMarkers.put(key, p);
-                            currentTitles.put(key, buildTitle(doc));
-                        } else {
-                            currentMarkers.remove(key);
-                            currentTitles.remove(key);
-                        }
-                    }
-                    redrawAllMarkers();
-                });
+        CollectionReference bills = db.collection("trips").document(tripId).collection("bills");
+        billsRegTrip = bills.addSnapshotListener((snap, err) -> {
+            if (err != null || snap == null || gmap == null) return;
 
-        // B. 我支付的
-        billsRegPayer = db.collectionGroup("bills")
-                .whereEqualTo("paidBy", myUid)
-                .addSnapshotListener((snap, err) -> {
-                    if (err != null || snap == null) return;
+            // 按子集合里所有账单画点
+            currentMarkers.clear();
+            currentTitles.clear();
 
-                    for (QueryDocumentSnapshot doc : snap) {
-                        String key = doc.getReference().getPath();
-                        LatLng p = extractLatLng(doc.get("geo"));
-                        if (p != null) {
-                            currentMarkers.put(key, p);
-                            currentTitles.put(key, buildTitle(doc));
-                        } else {
-                            currentMarkers.remove(key);
-                            currentTitles.remove(key);
-                        }
-                    }
-                    redrawAllMarkers();
-                });
+            for (QueryDocumentSnapshot doc : snap) {
+                LatLng p = extractLatLng(doc.get("geo"));
+                if (p != null) {
+                    String key = doc.getReference().getPath();
+                    currentMarkers.put(key, p);
+                    currentTitles.put(key, buildTitle(doc));
+                }
+            }
+            redrawAllMarkers();
+        });
     }
 
-    private void stopListeningMyBills() {
-        if (billsRegParticipants != null) {
-            billsRegParticipants.remove();
-            billsRegParticipants = null;
-        }
-        if (billsRegPayer != null) {
-            billsRegPayer.remove();
-            billsRegPayer = null;
-        }
-    }
+    // -------------- 地图绘制 --------------
 
     private void redrawAllMarkers() {
         if (gmap == null) return;
 
         gmap.clear();
+
         if (currentMarkers.isEmpty()) return;
 
         LatLngBounds.Builder bounds = new LatLngBounds.Builder();
         for (Map.Entry<String, LatLng> e : currentMarkers.entrySet()) {
             String key = e.getKey();
-            LatLng p = e.getValue();
+            LatLng p   = e.getValue();
             String title = currentTitles.get(key);
             if (title == null || title.isEmpty()) title = "Bill";
 
@@ -279,7 +381,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Nullable
     private LatLng extractLatLng(Object geoObj) {
         if (!(geoObj instanceof Map)) return null;
-        Map<?,?> geo = (Map<?,?>) geoObj;
+        Map<?, ?> geo = (Map<?, ?>) geoObj;
 
         Double lat = coerceDouble(geo.get("lat"));
         Double lon = coerceDouble(geo.get("lon"));
@@ -307,62 +409,5 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (title == null || title.isEmpty()) title = doc.getString("merchant");
         if (title == null) title = "Bill";
         return title;
-    }
-
-    // ===== 定位权限 & 蓝点 =====
-    private void enableMyLocationIfGranted() {
-        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED;
-        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED;
-
-        if (fine || coarse) {
-            actuallyEnableMyLocation();
-        } else {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    RC_LOCATION
-            );
-        }
-    }
-
-    @android.annotation.SuppressLint("MissingPermission")
-    private void actuallyEnableMyLocation() {
-        if (gmap != null) gmap.setMyLocationEnabled(true);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == RC_LOCATION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                actuallyEnableMyLocation();
-            } else {
-                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        stopListeningMyBills();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopListeningMyBills();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (bottom != null) {
-            suppressNav = true;
-            bottom.getMenu().findItem(R.id.nav_home).setChecked(true);
-            bottom.post(() -> suppressNav = false);
-        }
     }
 }
