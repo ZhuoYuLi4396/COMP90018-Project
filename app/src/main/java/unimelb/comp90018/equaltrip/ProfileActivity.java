@@ -1,5 +1,6 @@
 package unimelb.comp90018.equaltrip;
 
+
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -29,18 +30,17 @@ public class ProfileActivity extends AppCompatActivity {
     private static final int RC_BT = 103;
     private static final int RC_CAMERA = 104;
 
-    private boolean suppressNav = false;
-    private BottomNavigationView bottom;
-
     private String currency = "AUD Australian Dollar";
     private final String[] currencies = new String[]{
             "AUD Australian Dollar","USD United States Dollar","EUR Euro","CNY Chinese Yuan"
     };
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
+
 
         swLocation = findViewById(R.id.swLocation);
         swNotification = findViewById(R.id.swNotification);
@@ -48,7 +48,7 @@ public class ProfileActivity extends AppCompatActivity {
         swCamera = findViewById(R.id.swCamera);
         tvCurrencyValue = findViewById(R.id.tvCurrencyValue);
         LinearLayout rowCurrency = findViewById(R.id.rowCurrency);
-        bottom = findViewById(R.id.bottom_nav);
+        BottomNavigationView bottom = findViewById(R.id.bottomNav);
 
         // 初始化开关
         swLocation.setChecked(hasPermission(Manifest.permission.ACCESS_FINE_LOCATION));
@@ -86,33 +86,29 @@ public class ProfileActivity extends AppCompatActivity {
             else toast("Camera usage turned off in app");
         });
 
-        // ===== BottomNav（统一逻辑） =====
+        // ===== BottomNav：Profile -> Home / Trips =====
         if (bottom != null) {
+            bottom.setSelectedItemId(R.id.nav_profile);       // 高亮 Profile
+            bottom.setOnItemReselectedListener(item -> {});   // 避免重复触发
+
             bottom.setOnItemSelectedListener(item -> {
-                if (suppressNav) return true; // 程序化高亮时不导航
                 int id = item.getItemId();
-                if (id == R.id.nav_profile) return true; // 已在本页
                 if (id == R.id.nav_home) {
-                    startActivity(new Intent(this, HomeActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                    Intent i = new Intent(ProfileActivity.this, HomeActivity.class);
+                    i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(i);
                     overridePendingTransition(0, 0);
+                    finish(); // 想保留返回栈可删掉
                     return true;
-                }
-                if (id == R.id.nav_trips) {
-                    startActivity(new Intent(this, TripPageActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
-                    overridePendingTransition(0, 0);
-                    return true;
+                } else if (id == R.id.nav_trips) {
+                    Toast.makeText(this, "Trips coming soon", Toast.LENGTH_SHORT).show();
+                    bottom.setSelectedItemId(R.id.nav_profile); // 保持选中 Profile
+                    return false;
+                } else if (id == R.id.nav_profile) {
+                    return true; // 已在本页
                 }
                 return false;
             });
-
-            // 程序化高亮 Profile（不触发导航）
-            suppressNav = true;
-            bottom.getMenu().findItem(R.id.nav_profile).setChecked(true);
-            bottom.post(() -> suppressNav = false);
-
-            bottom.setOnItemReselectedListener(item -> { /* no-op */ });
         }
     }
 
@@ -127,6 +123,18 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
+
+    private void showGoToSettingsDialog(String msg) {
+        new AlertDialog.Builder(this)
+                .setMessage(msg + "\nYou can revoke it in system Settings.")
+                .setPositiveButton("Open Settings", (d, w) -> {
+                    Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    i.setData(Uri.fromParts("package", getPackageName(), null));
+                    startActivity(i);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
 
     private void showCurrencyDialog() {
         int selected = 0;
@@ -162,12 +170,4 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    @Override protected void onResume() {
-        super.onResume();
-        if (bottom != null) {
-            suppressNav = true;
-            bottom.getMenu().findItem(R.id.nav_profile).setChecked(true);
-            bottom.post(() -> suppressNav = false);
-        }
-    }
 }
