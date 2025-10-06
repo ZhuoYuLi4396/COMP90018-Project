@@ -123,6 +123,10 @@
             android:name=".AlgorithmTestActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".EditTripActivity"
+            android:exported="false"
+            android:parentActivityName=".TripDetailActivity" />
 
         <activity android:name=".TripDetailActivity" />
         <activity android:name=".AddTripActivity"
