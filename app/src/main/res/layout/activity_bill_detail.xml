@@ -237,13 +237,19 @@
                     android:textColor="#000000"
                     android:layout_marginBottom="8dp"/>
 
-                <ImageView
-                    android:id="@+id/ivReceipt"
-                    android:layout_width="88dp"
-                    android:layout_height="88dp"
-                    android:scaleType="center"
-                    android:background="@drawable/bg_rounded"
-                    android:src="@drawable/ic_image_placeholder"/>
+                <!-- ✅ 水平滚动容器，用于动态显示多张图片 -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/receiptContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="4dp"/>
+                </HorizontalScrollView>
 
             </LinearLayout>
 

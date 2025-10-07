@@ -1,6 +1,8 @@
 package unimelb.comp90018.equaltrip;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -8,6 +10,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +29,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
+import android.util.Base64;
 
 public class BillDetailActivity extends AppCompatActivity {
 
@@ -40,7 +44,7 @@ public class BillDetailActivity extends AppCompatActivity {
 
     // views
     private TextView tvTitle, tvSubtitle, tvDate, tvNote, tvPayerName, tvPayerPaidAmount;
-    private ImageView ivMap, ivPayerAvatar, ivReceipt;
+    private ImageView ivMap, ivPayerAvatar;
     private ProgressBar progress;
     private MaterialCardView cardReceipt;
     private ParticipantBalanceAdapter adapter;
@@ -84,7 +88,7 @@ public class BillDetailActivity extends AppCompatActivity {
         tvDate = findViewById(R.id.tvDate);
         tvNote = findViewById(R.id.tvNote);
         ivMap = findViewById(R.id.ivMap);
-        ivReceipt = findViewById(R.id.ivReceipt);
+        // ivReceipt = findViewById(R.id.ivReceipt);
         tvPayerName = findViewById(R.id.tvPayerName);
         tvPayerPaidAmount = findViewById(R.id.tvPayerPaidAmount);
         ivPayerAvatar = findViewById(R.id.ivPayerAvatar);
@@ -244,20 +248,56 @@ public class BillDetailActivity extends AppCompatActivity {
         }
 
         // 收据
-//        String receiptUrl = bill.receiptUrl;
-//        if (bill.receiptUrls != null && !bill.receiptUrls.isEmpty()) {
-//            receiptUrl = bill.receiptUrls.get(0);
-//        }
-//
-//        if (receiptUrl != null && !receiptUrl.isEmpty()) {
-//            Glide.with(this).load(receiptUrl)
-//                    .placeholder(R.drawable.ic_image_placeholder)
-//                    .into(ivReceipt);
-//            cardReceipt.setVisibility(View.VISIBLE);
-        ivReceipt.setImageResource(R.drawable.ic_image_placeholder);
-//        } else {
-//            cardReceipt.setVisibility(View.GONE);
-//        }
+        // ✅ 收据显示 + 点击放大
+        // ✅ 多张 Base64 收据动态显示
+        LinearLayout receiptContainer = findViewById(R.id.receiptContainer);
+        receiptContainer.removeAllViews(); // 清空旧的视图
+
+        if (bill.receiptsBase64 != null && !bill.receiptsBase64.isEmpty()) {
+            for (int i = 0; i < bill.receiptsBase64.size(); i++) {
+                try {
+                    String base64Str = bill.receiptsBase64.get(i);
+                    byte[] imageBytes = Base64.decode(base64Str, Base64.DEFAULT);
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+
+                    // 创建 ImageView
+                    ImageView imageView = new ImageView(this);
+                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(240, 240);
+                    params.setMargins(12, 0, 12, 0);
+                    imageView.setLayoutParams(params);
+                    imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    imageView.setImageBitmap(bitmap);
+                    imageView.setBackgroundResource(R.drawable.bg_rounded);
+                    imageView.setClickable(true);
+                    imageView.setAdjustViewBounds(true);
+
+                    // 点击放大查看
+                    imageView.setOnClickListener(v -> {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                        ImageView fullImage = new ImageView(this);
+                        fullImage.setImageBitmap(bitmap);
+                        fullImage.setAdjustViewBounds(true);
+                        fullImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                        builder.setView(fullImage)
+                                .setPositiveButton("Close", (dialog, which) -> dialog.dismiss())
+                                .show();
+                    });
+
+                    // 添加到容器
+                    receiptContainer.addView(imageView);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } else {
+            // 如果没有图片，可以显示一个占位提示
+            TextView placeholder = new TextView(this);
+            placeholder.setText("No receipts uploaded");
+            placeholder.setTextColor(getResources().getColor(android.R.color.darker_gray));
+            receiptContainer.addView(placeholder);
+        }
+
 
         // 参与者列表
         List<ParticipantBalance> rows = buildParticipantRows(bill, payerName, currency);

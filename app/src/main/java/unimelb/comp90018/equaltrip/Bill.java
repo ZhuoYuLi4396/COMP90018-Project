@@ -38,6 +38,8 @@ public class Bill {
     public List<Map<String, Object>> debts; // debts 数组
     public Long totalCents;
 
+    public List<String> receiptsBase64;
+
     public Bill() {}
 
     // 获取付款人 UID 的辅助方法
