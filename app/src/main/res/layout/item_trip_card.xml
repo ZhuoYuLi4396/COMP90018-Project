@@ -11,9 +11,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/field_gap"
-    app:cardCornerRadius="@dimen/field_corner"
-    app:strokeColor="@color/field_stroke"
+    android:layout_marginStart="0dp"
+    android:layout_marginEnd="0dp"
+    android:layout_marginBottom="30dp"
+
+    app:cardElevation="2dp"
+    app:strokeColor="#BDBDBD"
     app:strokeWidth="2dp"
     app:cardBackgroundColor="@android:color/white"
     android:clickable="true"
@@ -26,10 +29,10 @@
         android:orientation="vertical">
 
         <!-- 顶部灰色占位图 -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:background="@color/input_bg" />
+<!--        <View-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="100dp"-->
+<!--            android:background="@color/input_bg" />-->
 
         <!-- 信息区 -->
         <LinearLayout

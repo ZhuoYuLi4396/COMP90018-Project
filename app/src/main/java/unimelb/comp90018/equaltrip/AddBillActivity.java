@@ -22,7 +22,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -45,10 +44,16 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
 
-
 // Activity Result
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+
+// ML Kit - Text Recognition
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
 
 public class AddBillActivity extends AppCompatActivity {
     private EditText etBillName, etMerchant, etLocation, etAmount;
@@ -96,13 +101,28 @@ public class AddBillActivity extends AppCompatActivity {
     // 经纬度（由地理编码得到）
     private double latitude = 0.0;
     private double longitude = 0.0;
+    private Long tripStartDateMs = null;
+    private Long tripEndDateMs = null;
+
+    // === OCR Views ===
+    private View ocrOverlay;                // 半透明遮罩
+    private TextView tvOcrStatus;           // 遮罩上的“Recognizing…”
+    private LinearLayout layoutOcrResult;   // 蓝色结果条容器
+    private TextView tvOcrResult;           // 结果条文本
+    private Button btnRetryOcr;             // “Retry OCR”按钮
+
+    // === ML Kit Recognizers ===
+    private TextRecognizer latinRecognizer;
+    private TextRecognizer chineseRecognizer; // 备选（中文/混排更稳）
+
+    // 控制下一次操作是否要自动识图
+    private boolean ocrAfterNextCapture = false;
+    private boolean ocrAfterNextGalleryPick = false;
 
     // —— 返回给 HomeActivity 的常量 —— //
-    // Intent keys used to send a marker back to HomeActivity
     public static final String EXTRA_MARKER_LAT   = "extra_marker_lat";
     public static final String EXTRA_MARKER_LNG   = "extra_marker_lng";
     public static final String EXTRA_MARKER_TITLE = "extra_marker_title";
-
 
     // —— Nominatim HTTP 客户端 —— //
     private final OkHttpClient http = new OkHttpClient();
@@ -121,6 +141,17 @@ public class AddBillActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_bill);
 
+        // === OCR Views ===
+        ocrOverlay      = findViewById(R.id.ocr_overlay);
+        tvOcrStatus     = findViewById(R.id.tv_ocr_status);
+        layoutOcrResult = findViewById(R.id.layout_ocr_result);
+        tvOcrResult     = findViewById(R.id.tv_ocr_result);
+        btnRetryOcr     = findViewById(R.id.btn_retry_ocr);
+
+        // === ML Kit Recognizers ===
+        latinRecognizer   = TextRecognition.getClient(new TextRecognizerOptions.Builder().build());
+        chineseRecognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
+
         // 从 Trip Detail 带入 tripId
         tripId = getIntent().getStringExtra("tripId");
         if (tripId == null || tripId.isEmpty()) {
@@ -137,6 +168,40 @@ public class AddBillActivity extends AppCompatActivity {
 
         // 默认日期
         tvDate.setText(dateFormat.format(calendar.getTime()));
+        loadTripDateRange();
+    }
+
+    private void loadTripDateRange() {
+        FirebaseFirestore.getInstance()
+                .collection("trips")
+                .document(tripId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Object startObj = documentSnapshot.get("startDate");
+                        Object endObj   = documentSnapshot.get("endDate");
+
+                        if (startObj instanceof Long) {
+                            tripStartDateMs = (Long) startObj;
+                        } else if (startObj instanceof Number) {
+                            tripStartDateMs = ((Number) startObj).longValue();
+                        }
+
+                        if (endObj instanceof Long) {
+                            tripEndDateMs = (Long) endObj;
+                        } else if (endObj instanceof Number) {
+                            tripEndDateMs = ((Number) endObj).longValue();
+                        }
+
+                        if (tripStartDateMs != null) {
+                            calendar.setTimeInMillis(tripStartDateMs);
+                            tvDate.setText(dateFormat.format(calendar.getTime()));
+                        }
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Failed to load trip dates: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
     }
 
     private void initializeViews() {
@@ -144,42 +209,42 @@ public class AddBillActivity extends AppCompatActivity {
         etBillName = findViewById(R.id.et_bill_name);
         etMerchant = findViewById(R.id.et_merchant);
         etLocation = findViewById(R.id.et_location);
-        etAmount = findViewById(R.id.et_amount);
+        etAmount   = findViewById(R.id.et_amount);
 
         // Text views
-        tvDate = findViewById(R.id.tv_date);
-        tvPaidBy = findViewById(R.id.tv_paid_by);
+        tvDate         = findViewById(R.id.tv_date);
+        tvPaidBy       = findViewById(R.id.tv_paid_by);
         tvParticipants = findViewById(R.id.tv_participants);
-        tvTotalSplit = findViewById(R.id.tv_total_split);
+        tvTotalSplit   = findViewById(R.id.tv_total_split);
         tvPaidBy.setText("None selected");
 
         // Spinners
         spinnerCurrency = findViewById(R.id.spinner_currency);
 
         // Buttons
-        btnCreateBill = findViewById(R.id.btn_create_bill);
-        btnReceiptCamera = findViewById(R.id.btn_receipt_camera);
+        btnCreateBill     = findViewById(R.id.btn_create_bill);
+        btnReceiptCamera  = findViewById(R.id.btn_receipt_camera);
         btnReceiptGallery = findViewById(R.id.btn_receipt_gallery);
 
         // Category buttons
-        btnDining = findViewById(R.id.btn_dining);
+        btnDining    = findViewById(R.id.btn_dining);
         btnTransport = findViewById(R.id.btn_transport);
-        btnShopping = findViewById(R.id.btn_shopping);
-        btnOther = findViewById(R.id.btn_other);
+        btnShopping  = findViewById(R.id.btn_shopping);
+        btnOther     = findViewById(R.id.btn_other);
 
         // Receipt views
         receiptPlaceholder = findViewById(R.id.receipt_placeholder);
-        receiptPreview = findViewById(R.id.receipt_preview);
-        layoutReceipt = findViewById(R.id.layout_receipt);
+        receiptPreview     = findViewById(R.id.receipt_preview);
+        layoutReceipt      = findViewById(R.id.layout_receipt);
 
         // Split method radio buttons
-        rbEqual = findViewById(R.id.rb_equal);
+        rbEqual     = findViewById(R.id.rb_equal);
         rbCustomize = findViewById(R.id.rb_customize);
         rgSplitMethod = findViewById(R.id.rg_split_method);
 
         // Split amount views
         layoutSplitDetails = findViewById(R.id.layout_split_details);
-        rvSplitAmounts = findViewById(R.id.rv_split_amounts);
+        rvSplitAmounts     = findViewById(R.id.rv_split_amounts);
 
         // Back
         ImageButton btnBack = findViewById(R.id.btn_back);
@@ -223,12 +288,10 @@ public class AddBillActivity extends AppCompatActivity {
         tvDate.setOnClickListener(v -> showDatePicker());
         findViewById(R.id.layout_date).setOnClickListener(v -> showDatePicker());
 
-        // Receipt handling
-        layoutReceipt.setOnClickListener(v -> {
-            if (!hasReceipt) showReceiptOptions();
-        });
-        btnReceiptCamera.setOnClickListener(v -> tryOpenCamera());
-        btnReceiptGallery.setOnClickListener(v -> openGallery());
+        // Receipt handling：统一走弹窗（含 OCR 选项）
+        layoutReceipt.setOnClickListener(v -> showReceiptOptions());
+        btnReceiptCamera.setOnClickListener(v -> showReceiptOptions());
+        btnReceiptGallery.setOnClickListener(v -> showReceiptOptions());
 
         // Amount input
         etAmount.addTextChangedListener(new TextWatcher() {
@@ -275,9 +338,104 @@ public class AddBillActivity extends AppCompatActivity {
 
         // Create Bill
         btnCreateBill.setOnClickListener(v -> createBill());
+
+        btnRetryOcr.setOnClickListener(v -> {
+            if (receiptUris.isEmpty()) {
+                Toast.makeText(this, "No receipt image to recognize", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Uri target = receiptUris.get(receiptUris.size() - 1);
+            runOcrOnUri(target);
+        });
     }
 
-    // 高精度分账
+    private void showReceiptOptions() {
+        new AlertDialog.Builder(this)
+                .setTitle("Add Receipt")
+                .setItems(new String[]{
+                        "Take Photo",
+                        "Choose from Gallery",
+                        "Scan & Autofill (Camera)",
+                        "Scan & Autofill (Gallery)"
+                }, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // 普通拍照（不识图）
+                            ocrAfterNextCapture = false;
+                            tryOpenCamera();
+                            break;
+                        case 1: // 普通相册（不识图）
+                            ocrAfterNextGalleryPick = false;
+                            openGallery();
+                            break;
+                        case 2: // 拍照并识图
+                            ocrAfterNextCapture = true;
+                            tryOpenCamera();
+                            break;
+                        case 3: // 相册并识图（单选）
+                            ocrAfterNextGalleryPick = true;
+                            openGalleryForOcrSingle();
+                            break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // ====== 相机/相册 ======
+    void openCamera() {
+        try {
+            pendingCameraOutputUri = createImageOutputUri(); // 生成 content:// Uri
+            if (pendingCameraOutputUri != null) {
+                takePictureLauncher.launch(pendingCameraOutputUri);
+            } else {
+                Toast.makeText(this, "Failed to create photo file", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this,
+                    "Open camera failed: " + e.getClass().getSimpleName() + " - " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private Uri createImageOutputUri() throws IOException {
+        File picturesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (picturesDir == null) return null;
+        if (!picturesDir.exists()) picturesDir.mkdirs();
+
+        String fileName = "receipt_" + System.currentTimeMillis() + ".jpg";
+        File imageFile = new File(picturesDir, fileName);
+        if (!imageFile.exists()) imageFile.createNewFile();
+
+        return FileProvider.getUriForFile(
+                this,
+                getPackageName() + ".fileprovider",
+                imageFile
+        );
+    }
+
+    private void openGallery() {
+        pickImagesLauncher.launch(new String[]{"image/*"});
+    }
+
+    private void openGalleryForOcrSingle() {
+        pickOneImageForOcr.launch("image/*");
+    }
+
+    private void showReceiptPreview() {
+        hasReceipt = true;
+        receiptPlaceholder.setVisibility(View.GONE);
+        receiptPreview.setVisibility(View.VISIBLE);
+    }
+
+    private void removeReceipt() {
+        hasReceipt = false;
+        receiptBitmap = null;
+        receiptPlaceholder.setVisibility(View.VISIBLE);
+        receiptPreview.setVisibility(View.GONE);
+    }
+
+    // ====== 计算拆分 ======
     private Map<String, Double> calculateSplits(String payer, List<String> participants, double amount) {
         Map<String, Double> result = new HashMap<>();
         if (participants == null || participants.isEmpty()) return result;
@@ -444,92 +602,42 @@ public class AddBillActivity extends AppCompatActivity {
     }
 
     private void showDatePicker() {
+        if (tripStartDateMs == null || tripEndDateMs == null) {
+            Toast.makeText(this, "Loading trip dates, please wait...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         DatePickerDialog datePickerDialog = new DatePickerDialog(
                 this,
                 (view, year, month, dayOfMonth) -> {
                     calendar.set(Calendar.YEAR, year);
                     calendar.set(Calendar.MONTH, month);
                     calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                    long selectedMs = calendar.getTimeInMillis();
+                    if (selectedMs < tripStartDateMs || selectedMs > tripEndDateMs) {
+                        Toast.makeText(this,
+                                "Please select a date within the trip period",
+                                Toast.LENGTH_SHORT).show();
+                        calendar.setTimeInMillis(tripStartDateMs);
+                    }
+
                     tvDate.setText(dateFormat.format(calendar.getTime()));
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
         );
+
+        datePickerDialog.getDatePicker().setMinDate(tripStartDateMs);
+        datePickerDialog.getDatePicker().setMaxDate(tripEndDateMs);
         datePickerDialog.show();
-    }
-
-    private void showReceiptOptions() {
-        new AlertDialog.Builder(this)
-                .setTitle("Add Receipt")
-                .setItems(new String[]{"Take Photo", "Choose from Gallery"},
-                        (dialog, which) -> { if (which == 0) tryOpenCamera(); else openGallery(); })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    void openCamera() {
-        try {
-            pendingCameraOutputUri = createImageOutputUri(); // 生成 content:// Uri
-            if (pendingCameraOutputUri != null) {
-                takePictureLauncher.launch(pendingCameraOutputUri);
-            } else {
-                Toast.makeText(this, "Failed to create photo file", Toast.LENGTH_SHORT).show();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this,
-                    "Open camera failed: " + e.getClass().getSimpleName() + " - " + e.getMessage(),
-                    Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private Uri createImageOutputUri() throws IOException {
-        File picturesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        if (picturesDir == null) return null;
-        if (!picturesDir.exists()) picturesDir.mkdirs();
-
-        String fileName = "receipt_" + System.currentTimeMillis() + ".jpg";
-        File imageFile = new File(picturesDir, fileName);
-        if (!imageFile.exists()) imageFile.createNewFile();
-
-        return FileProvider.getUriForFile(
-                this,
-                getPackageName() + ".fileprovider",
-                imageFile
-        );
-    }
-
-    private void openGallery() {
-        pickImagesLauncher.launch(new String[]{"image/*"});
-    }
-
-    private void showReceiptPreview() {
-        hasReceipt = true;
-        receiptPlaceholder.setVisibility(View.GONE);
-        receiptPreview.setVisibility(View.VISIBLE);
-    }
-
-    private void removeReceipt() {
-        hasReceipt = false;
-        receiptBitmap = null;
-        receiptPlaceholder.setVisibility(View.VISIBLE);
-        receiptPreview.setVisibility(View.GONE);
-    }
-
-    private String getUidFromUserId(String userId) {
-        int index = selectedParticipantUserIds.indexOf(userId);
-        if (index != -1 && index < selectedParticipantUids.size()) {
-            return selectedParticipantUids.get(index);
-        }
-        return null;
     }
 
     /** =========================
      *   创建账单 -> 地理编码(正向+反向自动分类) -> 上传 -> 回传给 Home
      *  ========================= */
     private void createBill() {
-        // —— 校验（原样保留）——
         if (etBillName.getText().toString().trim().isEmpty()) {
             Toast.makeText(this, "Please enter bill name", Toast.LENGTH_SHORT).show();
             return;
@@ -582,17 +690,14 @@ public class AddBillActivity extends AppCompatActivity {
             }
         }
 
-        // —— 正向地理编码：地址 -> lat/lon —— //
         final String address = etLocation.getText().toString().trim();
         geocodeForward(address, new GeoCallback() {
             @Override public void onSuccess(double lat, double lon) {
                 latitude = lat;
                 longitude = lon;
-                // 反向（去抖/冷却）自动分类完成后再上传
                 fetchCategoryFromNominatimDebounced(lat, lon, AddBillActivity.this::uploadBillWithGeoThenReturn);
             }
             @Override public void onError(String msg) {
-                // 即便失败也可选择继续上传（无坐标/无分类）
                 latitude = 0.0;
                 longitude = 0.0;
                 Toast.makeText(AddBillActivity.this, "Locate failed: " + msg, Toast.LENGTH_SHORT).show();
@@ -601,9 +706,8 @@ public class AddBillActivity extends AppCompatActivity {
         });
     }
 
-    /** 正向地理编码：地址 -> lat/lon，并先做一次快速自动分类，再触发反向补全 */
+    /** 正向地理编码 */
     private void geocodeForward(String query, GeoCallback cb) {
-        // 先做 URL 编码（单独 try，避免后续逻辑继续）
         final String q;
         try {
             q = java.net.URLEncoder.encode(query, "UTF-8");
@@ -616,7 +720,7 @@ public class AddBillActivity extends AppCompatActivity {
 
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(url)
-                .header("User-Agent", "EqualTrip/1.0") // Nominatim 必须带 UA
+                .header("User-Agent", "EqualTrip/1.0")
                 .build();
 
         http.newCall(request).enqueue(new okhttp3.Callback() {
@@ -632,7 +736,7 @@ public class AddBillActivity extends AppCompatActivity {
                     }
                     String body = (response.body() != null) ? response.body().string() : "";
                     try {
-                        JSONArray arr = new JSONArray(body);          // 可能抛 JSONException
+                        JSONArray arr = new JSONArray(body);
                         if (arr.length() == 0) {
                             runOnUiThread(() -> cb.onError("No result"));
                             return;
@@ -640,17 +744,15 @@ public class AddBillActivity extends AppCompatActivity {
 
                         JSONObject o = arr.getJSONObject(0);
 
-                        // Nominatim 的 lat/lon 常为字符串，这里优先按字符串解析，fallback 到 optDouble
                         String latStr = o.optString("lat", null);
                         String lonStr = o.optString("lon", null);
-                        double lat = (!isEmpty(latStr)) ? Double.parseDouble(latStr) : o.optDouble("lat", Double.NaN);
-                        double lon = (!isEmpty(lonStr)) ? Double.parseDouble(lonStr) : o.optDouble("lon", Double.NaN);
+                        double lat = (latStr != null && !latStr.isEmpty()) ? Double.parseDouble(latStr) : o.optDouble("lat", Double.NaN);
+                        double lon = (lonStr != null && !lonStr.isEmpty()) ? Double.parseDouble(lonStr) : o.optDouble("lon", Double.NaN);
                         if (Double.isNaN(lat) || Double.isNaN(lon)) {
                             runOnUiThread(() -> cb.onError("Bad coordinates"));
                             return;
                         }
 
-                        // 提取一些可用于自动分类的字段（有些键不存在，用 optString 不会抛异常）
                         String cls = o.optString("class", "");
                         String typ = o.optString("type", "");
                         String shop = o.optString("shop", "");
@@ -660,7 +762,6 @@ public class AddBillActivity extends AppCompatActivity {
                                 + (shop.isEmpty() ? "" : " shop:" + shop)
                                 + (amenity.isEmpty() ? "" : " amenity:" + amenity));
 
-                        // UI 线程：自动选分类 + 回调成功
                         runOnUiThread(() -> {
                             autoSelectCategory(raw);
                             cb.onSuccess(lat, lon);
@@ -670,18 +771,15 @@ public class AddBillActivity extends AppCompatActivity {
                         runOnUiThread(() -> cb.onError("Parse JSON failed"));
                     }
                 } finally {
-                    // 读过 body 之后记得关闭
                     if (response != null) response.close();
                 }
             }
 
-            // 小工具：避免引入 TextUtils
             private boolean isEmpty(String s) { return s == null || s.isEmpty(); }
         });
     }
 
-
-    /** 去抖 + 冷却：在 MIN_NOMINATIM_INTERVAL_MS 内只执行最后一次真正请求 */
+    /** 去抖 + 冷却 */
     private void fetchCategoryFromNominatimDebounced(double lat, double lon, Runnable after) {
         long now = System.currentTimeMillis();
         long since = now - lastNominatimCallMs;
@@ -702,7 +800,7 @@ public class AddBillActivity extends AppCompatActivity {
         fetchCategoryFromNominatimInternal(lat, lon, after);
     }
 
-    /** 真正的反向地理编码（含 429/503 重试 & extratags 解析） */
+    /** 反向地理编码（含重试） */
     private void fetchCategoryFromNominatimInternal(double lat, double lon, Runnable after) {
         lastNominatimCallMs = System.currentTimeMillis();
 
@@ -809,7 +907,7 @@ public class AddBillActivity extends AppCompatActivity {
         setCategorySelected(btnOther, true);
     }
 
-    /** 上传 Firestore（含收据上传），成功后把坐标回传给 Home 并结束页面 */
+    /** 上传 Firestore（含收据上传到 Firebase Storage），成功后回传坐标再关闭 */
     private void uploadBillWithGeoThenReturn() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
@@ -831,12 +929,11 @@ public class AddBillActivity extends AppCompatActivity {
         billData.put("geo", geoPoint);
 
         billData.put("receiptUrls", receiptUrlList);
-
-        String currencyFull = spinnerCurrency.getSelectedItem().toString();
         billData.put("currency", spinnerCurrency.getSelectedItem().toString());
         billData.put("paidBy", selectedPayerUid);
         billData.put("participants", new ArrayList<>(selectedParticipantUids));
-        billData.put("createdAt", Timestamp.now());
+        billData.put("createdAt", new Timestamp(calendar.getTime()));
+        billData.put("date", new Timestamp(calendar.getTime()));
 
         List<Map<String, Object>> debtsList = new ArrayList<>();
         for (ParticipantSplit split : participantSplits) {
@@ -896,6 +993,14 @@ public class AddBillActivity extends AppCompatActivity {
         }
     }
 
+    private String getUidFromUserId(String userId) {
+        int index = selectedParticipantUserIds.indexOf(userId);
+        if (index != -1 && index < selectedParticipantUids.size()) {
+            return selectedParticipantUids.get(index);
+        }
+        return null;
+    }
+
     /** 回传坐标和标题给 HomeActivity，并结束页面 */
     private void returnMarkerToHomeAndFinish() {
         String title = etBillName.getText().toString().trim();
@@ -937,15 +1042,55 @@ public class AddBillActivity extends AppCompatActivity {
     private final ActivityResultLauncher<Uri> takePictureLauncher =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (success && pendingCameraOutputUri != null) {
-                    receiptUris.add(pendingCameraOutputUri);
+                    Uri justTaken = pendingCameraOutputUri;
+                    receiptUris.add(justTaken);
                     pendingCameraOutputUri = null;
                     updateReceiptUI();
+
+                    // ★ 只有当选择了“Scan & Autofill (Camera)”时才识图
+                    if (ocrAfterNextCapture) {
+                        ocrAfterNextCapture = false; // 用完即清
+                        runOcrOnUri(justTaken);
+                    }
                 } else {
                     cleanupIfTempFile(pendingCameraOutputUri);
                     pendingCameraOutputUri = null;
                 }
             });
 
+    private final ActivityResultLauncher<String[]> pickImagesLauncher =
+            registerForActivityResult(new ActivityResultContracts.OpenMultipleDocuments(), uris -> {
+                if (uris == null || uris.isEmpty()) return;
+                for (Uri uri : uris) {
+                    try {
+                        getContentResolver().takePersistableUriPermission(
+                                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+                    } catch (Exception ignored) {}
+                }
+                receiptUris.addAll(uris);
+                updateReceiptUI();
+                // 不自动识图
+            });
+
+    private final ActivityResultLauncher<String> pickOneImageForOcr =
+            registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+                if (uri == null) return;
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    );
+                } catch (Exception ignored) {}
+                receiptUris.add(uri);
+                updateReceiptUI();
+
+                if (ocrAfterNextGalleryPick) {
+                    ocrAfterNextGalleryPick = false;
+                    runOcrOnUri(uri);
+                }
+            });
+
+    // 根据列表是否为空切换 placeholder/preview，并刷新列表
     void updateReceiptUI() {
         hasReceipt = !receiptUris.isEmpty();
         if (hasReceipt) {
@@ -971,20 +1116,7 @@ public class AddBillActivity extends AppCompatActivity {
         updateReceiptUI();
     }
 
-    private final ActivityResultLauncher<String[]> pickImagesLauncher =
-            registerForActivityResult(new ActivityResultContracts.OpenMultipleDocuments(), uris -> {
-                if (uris == null || uris.isEmpty()) return;
-                for (Uri uri : uris) {
-                    try {
-                        getContentResolver().takePersistableUriPermission(
-                                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        );
-                    } catch (Exception ignored) {}
-                }
-                receiptUris.addAll(uris);
-                updateReceiptUI();
-            });
-
+    // 如果是 app 专属目录文件，把它删掉（相册里不会有）
     private void cleanupIfTempFile(Uri uri) {
         if (uri == null) return;
         try {
@@ -1056,6 +1188,89 @@ public class AddBillActivity extends AppCompatActivity {
 
     public List<Uri> getReceiptUris() {
         return new ArrayList<>(receiptUris);
+    }
+
+    // ======= OCR 流程 =======
+
+    private void startOcrUi() {
+        if (ocrOverlay != null) ocrOverlay.setVisibility(View.VISIBLE);
+        if (tvOcrStatus != null) tvOcrStatus.setText(getString(R.string.ocr_recognizing));
+        if (layoutOcrResult != null) layoutOcrResult.setVisibility(View.GONE);
+    }
+
+    private void finishOcrUiSuccess(ReceiptOcrParser.OcrResult r) {
+        if (ocrOverlay != null) ocrOverlay.setVisibility(View.GONE);
+        if (layoutOcrResult != null) {
+            layoutOcrResult.setVisibility(View.VISIBLE);
+            layoutOcrResult.setOnClickListener(v -> layoutOcrResult.setVisibility(View.GONE));
+        }
+        if (tvOcrResult != null) tvOcrResult.setText(r.toString());
+
+        if (r.merchant != null && !r.merchant.isEmpty()) etMerchant.setText(r.merchant);
+        if (r.totalAmount != null && !r.totalAmount.isEmpty()) {
+            etAmount.setText(r.totalAmount);
+            try { totalAmount = Double.parseDouble(r.totalAmount); } catch (Exception ignored) {}
+            updateSplitAmounts();
+        }
+        if (r.date != null && !r.date.isEmpty()) tvDate.setText(r.date);
+
+        Toast.makeText(this, getString(R.string.ocr_success), Toast.LENGTH_SHORT).show();
+
+        new Handler(getMainLooper()).postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed() && layoutOcrResult != null)
+                layoutOcrResult.setVisibility(View.GONE);
+        }, 2500);
+    }
+
+    private void finishOcrUiFailure(Exception e) {
+        if (ocrOverlay != null) ocrOverlay.setVisibility(View.GONE);
+        if (layoutOcrResult != null) layoutOcrResult.setVisibility(View.GONE);
+        Toast.makeText(this, getString(R.string.ocr_failed), Toast.LENGTH_SHORT).show();
+        if (e != null) e.printStackTrace();
+    }
+
+    private void runOcrOnUri(Uri uri) {
+        if (uri == null) {
+            Toast.makeText(this, "Image Uri is null", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        startOcrUi();
+
+        try {
+            InputImage image = InputImage.fromFilePath(this, uri);
+
+            latinRecognizer.process(image)
+                    .addOnSuccessListener(text -> {
+                        String full = (text != null) ? text.getText() : "";
+                        if (full == null || full.trim().isEmpty()) {
+                            chineseRecognizer.process(image)
+                                    .addOnSuccessListener(textCN -> {
+                                        String fullCN = (textCN != null) ? textCN.getText() : "";
+                                        if (fullCN == null || fullCN.trim().isEmpty()) {
+                                            finishOcrUiFailure(null);
+                                        } else {
+                                            ReceiptOcrParser.OcrResult r = ReceiptOcrParser.parse(fullCN);
+                                            finishOcrUiSuccess(r);
+                                        }
+                                    })
+                                    .addOnFailureListener(this::finishOcrUiFailure);
+                        } else {
+                            ReceiptOcrParser.OcrResult r = ReceiptOcrParser.parse(full);
+                            finishOcrUiSuccess(r);
+                        }
+                    })
+                    .addOnFailureListener(this::finishOcrUiFailure);
+
+        } catch (Exception e) {
+            finishOcrUiFailure(e);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try { if (latinRecognizer != null) latinRecognizer.close(); } catch (Exception ignored) {}
+        try { if (chineseRecognizer != null) chineseRecognizer.close(); } catch (Exception ignored) {}
     }
 
     // —— 地理编码回调接口 —— //

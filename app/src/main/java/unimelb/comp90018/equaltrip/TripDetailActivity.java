@@ -33,7 +33,8 @@ import android.content.Intent;      // +++
 import android.widget.Button;       // +++
 import android.widget.Toast;        // +++
 
-public class TripDetailActivity extends AppCompatActivity {
+public class TripDetailActivity extends AppCompatActivity implements BillsAdapter.OnBillClickListener {
+    private String currentTripId;
 
     private static final String TAG = "TripDetail";
 
@@ -87,6 +88,7 @@ public class TripDetailActivity extends AppCompatActivity {
         myUid = FirebaseAuth.getInstance().getCurrentUser() != null
                 ? FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
 
+        currentTripId = getIntent().getStringExtra("tripId");
         // ---- 先取 tripId 并校验 ----
         tripId = getIntent().getStringExtra("tripId");
         Log.d(TAG, "tripId=" + tripId);
@@ -95,6 +97,13 @@ public class TripDetailActivity extends AppCompatActivity {
             finish();
             return;
         }
+
+        // 初始化 BillsAdapter 并设置点击监听器
+        //BillsAdapter billsAdapter = new BillsAdapter(bills, myUid, uid -> {
+            // 用于解析用户显示的名称
+            //return uid;
+        //});
+        //billsAdapter.setOnBillClickListener(this);  // 设置监听器
 
         // Toolbar
         MaterialToolbar topAppBar = findViewById(R.id.topAppBar);
@@ -160,6 +169,7 @@ public class TripDetailActivity extends AppCompatActivity {
                         return m != null ? m.display() : uid;
                     }
             );
+            billsAdapter.setOnBillClickListener(this); // 设置点击监听器
             rvBills.setAdapter(billsAdapter);
         }
 
@@ -176,6 +186,15 @@ public class TripDetailActivity extends AppCompatActivity {
         if (myUid == null) {
             Log.w(TAG, "Not signed in — balances will not compute fully.");
         }
+    }
+
+    // 实现接口的 onBillClicked 方法
+    @Override
+    public void onBillClicked(String bid) {
+        Intent i = new Intent(this, BillDetailActivity.class);
+        i.putExtra(BillDetailActivity.EXTRA_TID, currentTripId);  // 传递当前 tripId
+        i.putExtra(BillDetailActivity.EXTRA_BID, bid);  // 传递选中的 billId
+        startActivity(i);
     }
 
     @Override protected void onStart() {
@@ -435,5 +454,8 @@ public class TripDetailActivity extends AppCompatActivity {
     }
 
     private static String nz(@Nullable String v, @NonNull String def){ return (v==null||v.trim().isEmpty())?def:v; }
+
+
+
 }
 

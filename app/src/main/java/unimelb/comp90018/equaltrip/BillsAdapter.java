@@ -17,8 +17,19 @@ public class BillsAdapter extends RecyclerView.Adapter<BillsAdapter.VH> {
     private final List<Bill> data;
     private final String meUid;
     private final DisplayNameResolver nameResolver;
+    private OnBillClickListener onBillClickListener;
 
     public interface DisplayNameResolver { String nameOf(String uid); }
+
+    // 添加接口以供 TripDetailActivity 处理点击事件
+    public interface OnBillClickListener {
+        void onBillClicked(String bid); // 当点击某个账单时触发此方法
+    }
+
+
+    public void setOnBillClickListener(OnBillClickListener listener) {
+        this.onBillClickListener = listener;
+    }
 
     public BillsAdapter(List<Bill> data, String meUid, DisplayNameResolver resolver) {
         this.data = data; this.meUid = meUid; this.nameResolver = resolver;
@@ -51,6 +62,13 @@ public class BillsAdapter extends RecyclerView.Adapter<BillsAdapter.VH> {
 
         long cents = b.totalCents == null ? 0L : b.totalCents;
         h.tvAmount.setText(NumberFormat.getCurrencyInstance().format(cents / 100.0));
+
+        // 设置点击事件
+        h.itemView.setOnClickListener(v -> {
+            if (onBillClickListener != null) {
+                onBillClickListener.onBillClicked(b.id);
+            }
+        });
     }
 
     @Override public int getItemCount() { return data.size(); }
