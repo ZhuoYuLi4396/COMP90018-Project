@@ -17,7 +17,7 @@ public class BillsAdapter extends RecyclerView.Adapter<BillsAdapter.VH> {
     private final List<Bill> data;
     private final String meUid;
     private final DisplayNameResolver nameResolver;
-    private OnBillClickListener onBillClickListener; // 添加监听器
+    private OnBillClickListener onBillClickListener;
 
     public interface DisplayNameResolver { String nameOf(String uid); }
 
@@ -26,7 +26,7 @@ public class BillsAdapter extends RecyclerView.Adapter<BillsAdapter.VH> {
         void onBillClicked(String bid); // 当点击某个账单时触发此方法
     }
 
-    // 设置监听器
+
     public void setOnBillClickListener(OnBillClickListener listener) {
         this.onBillClickListener = listener;
     }
@@ -66,7 +66,7 @@ public class BillsAdapter extends RecyclerView.Adapter<BillsAdapter.VH> {
         // 设置点击事件
         h.itemView.setOnClickListener(v -> {
             if (onBillClickListener != null) {
-                onBillClickListener.onBillClicked(b.id); // 点击账单时触发监听器
+                onBillClickListener.onBillClicked(b.id);
             }
         });
     }
