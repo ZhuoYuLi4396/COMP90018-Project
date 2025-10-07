@@ -4,6 +4,7 @@ import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -14,6 +15,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import java.io.ByteArrayOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -53,7 +56,7 @@ import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
 
-
+import android.util.Base64;
 
 
 public class AddBillActivity extends AppCompatActivity {
@@ -988,38 +991,43 @@ public class AddBillActivity extends AppCompatActivity {
                             Toast.makeText(this, "Error uploading bill: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                     );
         } else {
-            // 有收据，走异步上传逻辑
+            // ✅ 改成：遍历 URI 转 Base64 并存 Firestore
+            List<String> base64List = new ArrayList<>();
+
             for (Uri uri : receiptUris) {
-                StorageReference fileRef = storageRef.child("receipts/" + tripId + "/" + System.currentTimeMillis() + ".jpg");
+                try {
+                    // 1️⃣ 从 Uri 读取 Bitmap（你组员OCR流程不受影响）
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
 
-                fileRef.putFile(uri)
-                        .addOnSuccessListener(taskSnapshot ->
-                                fileRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
-                                    // 每次成功上传一张，就加到列表里
-                                    receiptUrlList.add(downloadUri.toString());
+                    // 2️⃣ 压缩画质，防止 Firestore 超 1MB 限制
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos);
 
-                                    // 全部上传完后再保存 billData
-                                    if (receiptUrlList.size() == receiptUris.size()) {
-                                        billData.put("receiptUrls", receiptUrlList);
+                    // 3️⃣ 转成 Base64 字符串
+                    String base64Image = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+                    base64List.add(base64Image);
 
-                                        db.collection("trips")
-                                                .document(tripId)
-                                                .collection("bills")
-                                                .document(billId)
-                                                .set(billData)
-                                                .addOnSuccessListener(aVoid ->
-                                                        Toast.makeText(this, "Bill uploaded with images!", Toast.LENGTH_SHORT).show()
-                                                )
-                                                .addOnFailureListener(e ->
-                                                        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                                                );
-                                    }
-                                })
-                        )
-                        .addOnFailureListener(e ->
-                                Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                        );
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
+
+            // 4️⃣ 把 Base64 列表放进 billData
+            billData.put("receiptsBase64", base64List);
+
+            // 5️⃣ 存入 Firestore（不再使用 Firebase Storage）
+            db.collection("trips")
+                    .document(tripId)
+                    .collection("bills")
+                    .document(billId)
+                    .set(billData)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Bill saved with Base64 images!", Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this, "Error uploading bill: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                    );
         }
     }
 
