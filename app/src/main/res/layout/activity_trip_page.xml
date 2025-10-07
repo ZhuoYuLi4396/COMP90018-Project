@@ -10,6 +10,7 @@
     android:background="@color/bg_page">
 
     <!-- 顶部栏：标题 -->
+
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/head_bar"
         android:layout_width="0dp"
@@ -24,8 +25,8 @@
         app:layout_constraintTop_toTopOf="parent"
         app:title="@string/equaltrip"
         app:titleCentered="false"
-        app:titleTextColor="@color/link_blue"
-        app:titleTextAppearance="@style/ToolbarTitleText" />
+        app:titleTextAppearance="@style/ToolbarTitleText"
+        app:titleTextColor="@color/link_blue" />
 
     <ImageView
         android:id="@+id/iv_bell"
@@ -34,25 +35,26 @@
         android:layout_marginEnd="@dimen/field_horizontal_margin"
         android:contentDescription="@string/notifications"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_bell_24"
+        android:src="@drawable/ic_notifications_24"
         android:translationY="15dp"
         app:layout_constraintBottom_toBottomOf="@id/head_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/head_bar" />
+
     <ImageView
         android:id="@+id/iv_bluetooth"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
         android:layout_marginEnd="12dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Bluetooth"
         android:scaleType="centerInside"
         android:src="@drawable/ic_bluetooth_24"
         android:translationY="15dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        app:tint="@color/text_secondary"
-        app:layout_constraintTop_toTopOf="@id/head_bar"
         app:layout_constraintBottom_toBottomOf="@id/head_bar"
-        app:layout_constraintEnd_toStartOf="@id/iv_bell" />
+        app:layout_constraintEnd_toStartOf="@id/iv_bell"
+        app:layout_constraintTop_toTopOf="@id/head_bar"
+        app:tint="@color/text_secondary" />
 
     <!-- 搜索框（已去掉右侧 Filter 图标） -->
     <com.google.android.material.textfield.TextInputLayout
