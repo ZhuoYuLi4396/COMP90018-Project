@@ -34,15 +34,15 @@
         android:layout_marginEnd="@dimen/field_horizontal_margin"
         android:contentDescription="@string/notifications"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_bell_24"
+        android:src="@drawable/ic_notifications_24"
         android:translationY="15dp"
         app:layout_constraintBottom_toBottomOf="@id/head_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/head_bar" />
     <ImageView
         android:id="@+id/iv_bluetooth"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
         android:layout_marginEnd="12dp"
         android:contentDescription="Bluetooth"
         android:scaleType="centerInside"
