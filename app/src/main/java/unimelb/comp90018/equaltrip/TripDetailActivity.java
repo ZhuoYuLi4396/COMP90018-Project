@@ -99,11 +99,11 @@ public class TripDetailActivity extends AppCompatActivity implements BillsAdapte
         }
 
         // 初始化 BillsAdapter 并设置点击监听器
-        BillsAdapter billsAdapter = new BillsAdapter(bills, myUid, uid -> {
+        //BillsAdapter billsAdapter = new BillsAdapter(bills, myUid, uid -> {
             // 用于解析用户显示的名称
-            return uid;
-        });
-        billsAdapter.setOnBillClickListener(this);  // 设置监听器
+            //return uid;
+        //});
+        //billsAdapter.setOnBillClickListener(this);  // 设置监听器
 
         // Toolbar
         MaterialToolbar topAppBar = findViewById(R.id.topAppBar);
