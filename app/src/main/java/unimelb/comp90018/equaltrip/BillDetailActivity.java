@@ -248,8 +248,9 @@ public class BillDetailActivity extends AppCompatActivity {
         }
 
         // 收据
-        // ✅ 收据显示 + 点击放大
-        // ✅ 多张 Base64 收据动态显示
+        // 收据显示 + 点击放大
+        // 多张 Base64 收据动态显示
+        // Base64存储先压缩画质，再加图，最多3张否则会达到免费额度上限。
         LinearLayout receiptContainer = findViewById(R.id.receiptContainer);
         receiptContainer.removeAllViews(); // 清空旧的视图
 
