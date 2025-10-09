@@ -1,10 +1,14 @@
 package unimelb.comp90018.equaltrip;
 
 import android.app.DatePickerDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -13,6 +17,7 @@ import android.os.Looper;
 import android.telephony.TelephonyManager;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -20,6 +25,7 @@ import android.widget.*;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -35,6 +41,10 @@ import java.util.*;
 
 // Firebase
 import android.content.pm.PackageManager;
+
+import com.google.android.gms.location.Granularity;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
@@ -1394,6 +1404,7 @@ public class AddBillActivity extends AppCompatActivity {
         super.onDestroy();
         try { if (latinRecognizer != null) latinRecognizer.close(); } catch (Exception ignored) {}
         try { if (chineseRecognizer != null) chineseRecognizer.close(); } catch (Exception ignored) {}
+        try { fusedClient.removeLocationUpdates(new LocationCallback() {}); } catch (Exception ignored) {}
         cts.cancel();
     }
 
@@ -1420,7 +1431,9 @@ public class AddBillActivity extends AppCompatActivity {
                 FindAutocompletePredictionsRequest.builder()
                         .setSessionToken(sessionToken)
                         .setQuery(query)
-                        .setTypesFilter(Collections.singletonList("address"));
+                        // 更兼容 Android 13+，允许地标、店铺、POI
+                        .setCountries(getLikelyCountry());  // 限制国家（用你原函数）
+
 
         if (bias != null) builder.setLocationBias(bias);
 
@@ -1495,42 +1508,133 @@ public class AddBillActivity extends AppCompatActivity {
                 || ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
-    @SuppressLint("MissingPermission") // 我们在方法内有 hasLocationPermission() 的显式检查
+    @SuppressLint("MissingPermission")
     private void useCurrentLocation() {
-        // 如果没有权限，直接返回（不会触发危险调用）
         if (!hasLocationPermission()) {
             Toast.makeText(this, "Location permission not granted", Toast.LENGTH_SHORT).show();
             return;
         }
 
         try {
-            CurrentLocationRequest clr = new CurrentLocationRequest.Builder()
-                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-                    .setMaxUpdateAgeMillis(30000)
-                    .build();
-
-            fusedClient.getCurrentLocation(clr, cts.getToken())
-                    .addOnSuccessListener(loc -> {
-                        if (loc == null) {
-                            Toast.makeText(this, "Failed to get current location", Toast.LENGTH_SHORT).show();
-                            return;
+            // 🧹 1️⃣ 强制清除缓存
+            fusedClient.flushLocations();
+            fusedClient.getLastLocation()
+                    .addOnSuccessListener(location -> {
+                        // 强制丢弃缓存的粗定位
+                        if (location != null && location.hasAccuracy() && location.getAccuracy() > 50) {
+                            Log.w("GPS", "Discarding cached coarse location...");
                         }
-                        latitude = loc.getLatitude();
-                        longitude = loc.getLongitude();
-                        reverseGeocodeAndFill(latitude, longitude);
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(this, "Failed to get current location", Toast.LENGTH_SHORT).show();
                     });
 
-        } catch (SecurityException se) {
-            // 极端情况下（权限刚被撤回/系统策略变更）仍可能抛出
-            Toast.makeText(this, "Location permission denied by system", Toast.LENGTH_SHORT).show();
+            // 🧩 2️⃣ 手动清空 LocationManager 缓存（这是触发 cold start 的关键）
+            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            try {
+                lm.removeUpdates(dummyListener); // 移除旧监听器（防止缓存复用）
+            } catch (Exception ignored) {}
+
+            // 🕐 3️⃣ 延迟执行，让系统有时间“丢弃缓存”
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+
+                // 🔧 4️⃣ 构建请求：不允许任何缓存，强制唤醒卫星芯片
+                LocationRequest req = new LocationRequest.Builder(
+                        Priority.PRIORITY_HIGH_ACCURACY,
+                        2000 // 每 2 秒更新
+                )
+                        .setGranularity(Granularity.GRANULARITY_FINE)
+                        .setWaitForAccurateLocation(true)
+                        .setMaxUpdateAgeMillis(0)          // ❗不允许缓存
+                        .setMinUpdateIntervalMillis(500)
+                        .setMaxUpdates(5)
+                        .build();
+
+                // 🚀 5️⃣ 启动监听
+                fusedClient.requestLocationUpdates(req, new LocationCallback() {
+                    @Override
+                    public void onLocationResult(LocationResult result) {
+                        if (result == null) return;
+                        Location loc = result.getLastLocation();
+                        if (loc == null) return;
+
+                        float accuracy = loc.hasAccuracy() ? loc.getAccuracy() : Float.MAX_VALUE;
+                        String provider = loc.getProvider();
+                        double lat = loc.getLatitude();
+                        double lon = loc.getLongitude();
+
+                        Log.d("GPS", "Provider=" + provider + " acc=" + accuracy);
+
+                        // 📏 若仍是粗糙（network provider），继续强制 GPS 取一次
+                        if ((provider == null || provider.equals("network") || accuracy > 50)) {
+                            Log.w("GPS", "Fallback to raw GPS provider...");
+                            requestRawGpsLocation(); // 👈 这里调用原生 GPS 获取
+                            fusedClient.removeLocationUpdates(this);
+                            return;
+                        }
+
+                        // ✅ 足够精确，停止监听
+                        fusedClient.removeLocationUpdates(this);
+
+                        latitude = lat;
+                        longitude = lon;
+                        reverseGeocodeAndFill(lat, lon);
+                        fetchCategoryFromNominatim(lat, lon);
+
+                        Toast.makeText(AddBillActivity.this,
+                                String.format(Locale.getDefault(),
+                                        "Got location (±%.0fm): %.6f, %.6f",
+                                        accuracy, lat, lon),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }, Looper.getMainLooper());
+
+            }, 1200); // 延迟 1.2 秒确保缓存清除
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Location error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
+    // 👇 当 Fused Provider 退化为 network 定位时，强制再走一次原生 GPS
+    @SuppressLint("MissingPermission")
+    private void requestRawGpsLocation() {
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (lm == null) return;
+
+        try {
+            lm.requestSingleUpdate(LocationManager.GPS_PROVIDER, new LocationListener() {
+                @Override
+                public void onLocationChanged(@NonNull Location loc) {
+                    latitude = loc.getLatitude();
+                    longitude = loc.getLongitude();
+
+                    float acc = loc.getAccuracy();
+                    Log.d("GPS", "Raw GPS acc=" + acc);
+
+                    reverseGeocodeAndFill(latitude, longitude);
+                    fetchCategoryFromNominatim(latitude, longitude);
+
+                    Toast.makeText(AddBillActivity.this,
+                            String.format(Locale.getDefault(),
+                                    "Got precise GPS (±%.0fm): %.6f, %.6f",
+                                    acc, latitude, longitude),
+                            Toast.LENGTH_SHORT).show();
+                }
+            }, Looper.getMainLooper());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 用于清除旧监听器的空实现
+    private final LocationListener dummyListener = new LocationListener() {
+        @Override public void onLocationChanged(@NonNull Location location) {}
+    };
+
+
+
 
     private void reverseGeocodeAndFill(double lat, double lon) {
+        // 优先用系统 Geocoder
         if (Geocoder.isPresent()) {
             try {
                 Geocoder geo = new Geocoder(this, Locale.getDefault());
@@ -1538,17 +1642,78 @@ public class AddBillActivity extends AppCompatActivity {
                 if (list != null && !list.isEmpty()) {
                     Address a = list.get(0);
                     String line = a.getAddressLine(0);
-                    if (line == null) line = compactAddress(a);
-                    String addr = (line != null) ? line : (lat + "," + lon);
-                    etLocation.setText(addr);
-                    etLocation.setSelection(addr.length());
-                    return;
+                    if (line != null && !line.trim().isEmpty() && !line.equalsIgnoreCase("Melbourne, Victoria, Australia")) {
+                        etLocation.setText(line);
+                        etLocation.setSelection(line.length());
+                        return; // ✅ 成功，直接返回
+                    }
                 }
             } catch (IOException ignored) {}
         }
-        String addr = lat + "," + lon;
-        etLocation.setText(addr);
-        etLocation.setSelection(addr.length());
+
+        // 如果系统 Geocoder 结果太粗，用 Nominatim
+        String url = "https://nominatim.openstreetmap.org/reverse?format=json"
+                + "&lat=" + lat + "&lon=" + lon
+                + "&zoom=18&addressdetails=1";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("User-Agent", "EqualTrip/1.0")
+                .build();
+
+        http.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> {
+                    String fallback = lat + ", " + lon;
+                    etLocation.setText(fallback);
+                    etLocation.setSelection(fallback.length());
+                });
+            }
+
+            @Override public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful()) {
+                        runOnUiThread(() -> {
+                            String fallback = lat + ", " + lon;
+                            etLocation.setText(fallback);
+                            etLocation.setSelection(fallback.length());
+                        });
+                        return;
+                    }
+
+                    String body = response.body().string();
+                    JSONObject json = new JSONObject(body);
+                    JSONObject addr = json.optJSONObject("address");
+
+                    StringBuilder sb = new StringBuilder();
+                    if (addr != null) {
+                        // 优先拼接门牌号、街道、郊区、城市等
+                        if (addr.has("house_number")) sb.append(addr.optString("house_number")).append(" ");
+                        if (addr.has("road")) sb.append(addr.optString("road")).append(", ");
+                        if (addr.has("suburb")) sb.append(addr.optString("suburb")).append(", ");
+                        if (addr.has("city")) sb.append(addr.optString("city")).append(", ");
+                        if (addr.has("state")) sb.append(addr.optString("state")).append(", ");
+                        if (addr.has("postcode")) sb.append(addr.optString("postcode")).append(", ");
+                        if (addr.has("country")) sb.append(addr.optString("country"));
+                    }
+
+                    final String fullAddr = sb.length() > 0 ? sb.toString().trim() : (lat + ", " + lon);
+                    runOnUiThread(() -> {
+                        etLocation.setText(fullAddr);
+                        etLocation.setSelection(fullAddr.length());
+                    });
+
+                } catch (Exception ex) {
+                    runOnUiThread(() -> {
+                        String fallback = lat + ", " + lon;
+                        etLocation.setText(fallback);
+                        etLocation.setSelection(fallback.length());
+                    });
+                } finally {
+                    response.close();
+                }
+            }
+        });
     }
 
     private String compactAddress(Address a) {
@@ -1577,4 +1742,76 @@ public class AddBillActivity extends AppCompatActivity {
         }
         return Collections.emptyList();
     }
+
+    // 封装后的nominatim
+    private void fetchCategoryFromNominatim(double lat, double lon) {
+        String url = "https://nominatim.openstreetmap.org/reverse?format=json&lat="
+                + lat + "&lon=" + lon + "&zoom=18&addressdetails=1";
+
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("User-Agent", "EqualTrip/1.0") // Nominatim 必须有 UA
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() ->
+                        Toast.makeText(AddBillActivity.this, "API 请求失败", Toast.LENGTH_SHORT).show()
+                );
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) return;
+
+                try {
+                    String body = response.body().string();
+                    JSONObject json = new JSONObject(body);
+
+                    String cls = json.optString("class", "");
+                    String typ = json.optString("type", "");
+
+                    String category;
+                    if (!cls.isEmpty() && !typ.isEmpty()) {
+                        category = cls + " · " + typ;
+                    } else if (!cls.isEmpty()) {
+                        category = cls;
+                    } else if (!typ.isEmpty()) {
+                        category = typ;
+                    } else {
+                        category = "other"; // 默认值
+                    }
+
+                    // 在 UI 线程更新分类（比如自动选按钮）
+                    runOnUiThread(() -> {
+                        autoSelectCategory_nominatim(category);
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+    private void autoSelectCategory_nominatim(String category) {
+        category = category.toLowerCase();
+
+        if (category.contains("restaurant") || category.contains("food") || category.contains("cafe")) {
+            selectedCategory = "dining";
+            // setCategorySelected(btnDining, true);
+        } else if (category.contains("shop") || category.contains("mall")) {
+            selectedCategory = "shopping";
+            setCategorySelected(btnShopping, true);
+        } else if (category.contains("bus") || category.contains("railway") || category.contains("transport")) {
+            selectedCategory = "transport";
+            setCategorySelected(btnTransport, true);
+        } else {
+            selectedCategory = "other";
+            setCategorySelected(btnOther, true);
+        }
+    }
 }
+

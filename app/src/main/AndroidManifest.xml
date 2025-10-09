@@ -3,9 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
 
-
-
-
     <!-- 声明 BLE 能力；如果想允许非 BLE 设备也能安装，把 required 改为 false -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
@@ -27,10 +24,15 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
-    <!-- 扫描 BLE 在 Android 10 及以下必须要定位权限（且系统位置开关需开启） -->
+    <!-- 扫描 BLE 在 Android 10 及以下必须要定位权限（且系统位置开关需开启） 【临时关闭，GPS测试中】
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="30" />
+        android:maxSdkVersion="30" />  -->
+
+    <!-- ✅ 定位权限（无上限） -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- （可选）再补一条 COARSE 给更老的机型；FINE 已覆盖，可不写 -->
     <!--
     <uses-permission

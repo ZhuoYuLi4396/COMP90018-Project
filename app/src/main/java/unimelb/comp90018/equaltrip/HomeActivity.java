@@ -4,6 +4,8 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -199,6 +201,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     // ---------------- Map ----------------
+    /*
     @Override
     public void onMapReady(GoogleMap map) {
         gmap = map;
@@ -215,7 +218,57 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         enableMyLocationIfGranted();
     }
+    */
 
+    @Override
+    public void onMapReady(GoogleMap map) {
+        gmap = map;
+        mapReady = true;
+
+        gmap.getUiSettings().setZoomControlsEnabled(true);
+        gmap.getUiSettings().setCompassEnabled(true);
+        gmap.getUiSettings().setMapToolbarEnabled(false);
+
+        // 默认中心：墨尔本市中心
+        LatLng melbourne = new LatLng(-37.8136, 144.9631);
+        gmap.moveCamera(CameraUpdateFactory.newLatLngZoom(melbourne, 12f));
+
+        // ✅ Android 13+ 需要延迟执行权限检查，否则不弹框
+        new Handler(Looper.getMainLooper()).postDelayed(this::checkAndEnableMyLocation, 500);
+    }
+
+    /** Android 13+ 兼容版权限检测与启用逻辑 **/
+    private void checkAndEnableMyLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            try { if (gmap != null) gmap.setMyLocationEnabled(true); } catch (SecurityException ignore) {}
+        } else {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{ Manifest.permission.ACCESS_FINE_LOCATION }, // ← 只要 FINE
+                    RC_LOCATION
+            );
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] perms, @NonNull int[] results) {
+        super.onRequestPermissionsResult(requestCode, perms, results);
+        if (requestCode == RC_LOCATION) {
+            boolean fineGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED;
+            boolean coarseGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED;
+
+            if (fineGranted || coarseGranted) {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    try { if (gmap != null) gmap.setMyLocationEnabled(true); } catch (SecurityException ignore) {}
+                }, 300);
+            } else {
+                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
     private void enableMyLocationIfGranted() {
         boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED;
@@ -225,9 +278,13 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (fine || coarse) {
             actuallyEnableMyLocation();
         } else {
+            // 请求时加上 coarse 一起
             ActivityCompat.requestPermissions(
                     this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
                     RC_LOCATION
             );
         }
@@ -238,17 +295,28 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (gmap != null) gmap.setMyLocationEnabled(true);
     }
 
+    /*
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] perms, @NonNull int[] res) {
         super.onRequestPermissionsResult(requestCode, perms, res);
         if (requestCode == RC_LOCATION) {
-            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) {
-                actuallyEnableMyLocation();
+            boolean granted = false;
+            for (int r : res) {
+                if (r == PackageManager.PERMISSION_GRANTED) {
+                    granted = true;
+                    break;
+                }
+            }
+
+            if (granted) {
+                // 🔹 权限刚被允许，稍微延迟一下再开启地图定位（确保系统写入完成）
+                new android.os.Handler().postDelayed(this::actuallyEnableMyLocation, 300);
             } else {
                 Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
             }
         }
     }
+    */
 
     // ---------------- 最新 trip 选择 + bills 监听 ----------------
 
