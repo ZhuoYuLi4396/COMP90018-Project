@@ -81,7 +81,8 @@ public class TripPageActivity extends AppCompatActivity {
     private final Map<String, Trip> byId = new HashMap<>();
 
     private void setupBottomNav() {
-        bottom = findViewById(R.id.bottom_nav);
+        //bottom = findViewById(R.id.bottom_nav);
+        bottom = findViewById(R.id.bottomNav);
         if (bottom == null) return;
 
         bottom.setOnItemSelectedListener(item -> {

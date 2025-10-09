@@ -137,7 +137,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         // BottomNav —— 使用 include_bottom_nav 里的 @id/bottom_nav
-        bottom = findViewById(R.id.bottom_nav);
+        //bottom = findViewById(R.id.bottom_nav);
+        bottom = findViewById(R.id.bottomNav);
         if (bottom != null) {
             bottom.setOnItemSelectedListener(item -> {
                 if (suppressNav) return true; // 程序化高亮时不导航

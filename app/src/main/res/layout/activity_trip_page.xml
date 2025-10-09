@@ -86,7 +86,22 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- 底部导航 -->
-    <include layout="@layout/include_bottom_nav"/>
+<!--    <include layout="@layout/include_bottom_nav"/>-->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:layout_marginBottom="1dp"
+        app:itemIconTint="@drawable/nav_item_color"
+        app:itemTextColor="@drawable/nav_item_color"
+        app:menu="@menu/menu_bottom_nav"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
 
     <!-- Trip 列表 -->
     <androidx.recyclerview.widget.RecyclerView
@@ -98,7 +113,7 @@
         android:paddingTop="16dp"
         android:paddingEnd="@dimen/field_horizontal_margin"
         android:paddingBottom="152dp"
-        app:layout_constraintBottom_toTopOf="@id/bottom_nav"
+        app:layout_constraintBottom_toTopOf="@id/bottomNav"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/search_bar"
@@ -114,7 +129,7 @@
         android:layout_marginBottom="24dp"
         android:contentDescription="@string/add_trip"
         app:backgroundTint="@color/btn_primary"
-        app:layout_constraintBottom_toTopOf="@id/bottom_nav"
+        app:layout_constraintBottom_toTopOf="@id/bottomNav"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@drawable/ic_add_24"
         app:tint="@color/btn_text_on_primary"
