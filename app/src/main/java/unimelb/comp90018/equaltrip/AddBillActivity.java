@@ -3,16 +3,24 @@ package unimelb.comp90018.equaltrip;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.location.Address;
+import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
+import android.telephony.TelephonyManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -44,10 +52,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
 
-// Activity Result
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-
 // ML Kit - Text Recognition
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.TextRecognition;
@@ -55,8 +59,35 @@ import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
 
+// Google Places & Location
+import com.google.android.gms.common.api.ResolvableApiException;
+import com.google.android.gms.location.CurrentLocationRequest;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.location.SettingsClient;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.tasks.CancellationTokenSource;
+import com.google.android.gms.tasks.Task;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.AutocompletePrediction;
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.model.RectangularBounds;
+import com.google.android.libraries.places.api.net.FetchPlaceRequest;
+import com.google.android.libraries.places.api.net.FetchPlaceResponse;
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
+import com.google.android.libraries.places.api.net.PlacesClient;
+import android.annotation.SuppressLint;
+
+
 public class AddBillActivity extends AppCompatActivity {
-    private EditText etBillName, etMerchant, etLocation, etAmount;
+    // ====== 原有字段 ======
+    private EditText etBillName, etMerchant, etAmount;
+    private AutoCompleteTextView etLocation; // ← 改成 AutoCompleteTextView
     private TextView tvDate, tvPaidBy, tvParticipants, tvTotalSplit;
     private Spinner spinnerCurrency;
     private Button btnCreateBill;
@@ -71,7 +102,7 @@ public class AddBillActivity extends AppCompatActivity {
 
     // Category buttons
     private LinearLayout btnDining, btnTransport, btnShopping, btnOther;
-    private String selectedCategory = null; // 默认不选，让自动分类来点亮
+    private String selectedCategory = null;
 
     // Receipt views
     private LinearLayout receiptPlaceholder;
@@ -98,24 +129,24 @@ public class AddBillActivity extends AppCompatActivity {
     private final List<Uri> receiptUris = new ArrayList<>();
     private Uri pendingCameraOutputUri = null;
 
-    // 经纬度（由地理编码得到）
+    // 经纬度（用于保存/回传；优先使用联想/定位得到的值）
     private double latitude = 0.0;
     private double longitude = 0.0;
     private Long tripStartDateMs = null;
     private Long tripEndDateMs = null;
 
     // === OCR Views ===
-    private View ocrOverlay;                // 半透明遮罩
-    private TextView tvOcrStatus;           // 遮罩上的“Recognizing…”
-    private LinearLayout layoutOcrResult;   // 蓝色结果条容器
-    private TextView tvOcrResult;           // 结果条文本
-    private Button btnRetryOcr;             // “Retry OCR”按钮
+    private View ocrOverlay;
+    private TextView tvOcrStatus;
+    private LinearLayout layoutOcrResult;
+    private TextView tvOcrResult;
+    private Button btnRetryOcr;
 
     // === ML Kit Recognizers ===
     private TextRecognizer latinRecognizer;
-    private TextRecognizer chineseRecognizer; // 备选（中文/混排更稳）
+    private TextRecognizer chineseRecognizer;
 
-    // 控制下一次操作是否要自动识图
+    // OCR 控制
     private boolean ocrAfterNextCapture = false;
     private boolean ocrAfterNextGalleryPick = false;
 
@@ -127,14 +158,46 @@ public class AddBillActivity extends AppCompatActivity {
     // —— Nominatim HTTP 客户端 —— //
     private final OkHttpClient http = new OkHttpClient();
 
-    // —— 频率限制：去抖/冷却控制 —— //
-    private static final long MIN_NOMINATIM_INTERVAL_MS = 800; // 建议 800~1000ms
+    // —— 频率限制（Nominatim） —— //
+    private static final long MIN_NOMINATIM_INTERVAL_MS = 800;
     private long lastNominatimCallMs = 0L;
     private Double pendingLat = null, pendingLon = null;
     private Runnable pendingAfter = null;
 
-    // —— 分类：用户是否手动选择过，若手动则不再被自动覆盖 —— //
+    // —— 分类：用户是否手动选择过 —— //
     private boolean categoryManuallyChosen = false;
+
+    // ====== 新增：Places 自动补全 & 定位 ======
+    private PlacesClient placesClient;
+    private AutocompleteSessionToken sessionToken;
+    private final List<String> suggestions = new ArrayList<>();
+    private final List<String> suggestionPlaceIds = new ArrayList<>();
+    private ArrayAdapter<String> addrAdapter;
+    private Handler uiHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingSearch = null;
+
+    private FusedLocationProviderClient fusedClient;
+    private final CancellationTokenSource cts = new CancellationTokenSource();
+    private ImageButton btnUseGps; // 右侧 GPS 按钮
+
+    // 位置权限（一次性多权限）
+    private final ActivityResultLauncher<String[]> requestLocationPerms =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                boolean fine = Boolean.TRUE.equals(result.getOrDefault(android.Manifest.permission.ACCESS_FINE_LOCATION, false));
+                boolean coarse = Boolean.TRUE.equals(result.getOrDefault(android.Manifest.permission.ACCESS_COARSE_LOCATION, false));
+                if (fine || coarse) {
+                    checkLocationSettingsThenUse();
+                } else {
+                    Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    // 摄像头权限
+    private final ActivityResultLauncher<String> requestCameraPerm =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) openCamera();
+                else Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -169,6 +232,72 @@ public class AddBillActivity extends AppCompatActivity {
         // 默认日期
         tvDate.setText(dateFormat.format(calendar.getTime()));
         loadTripDateRange();
+
+        // ====== 初始化 Places & 定位 ======
+        if (!Places.isInitialized()) {
+            Places.initialize(getApplicationContext(), getString(R.string.PLACES_API_KEY));
+        }
+        placesClient = Places.createClient(this);
+        sessionToken = AutocompleteSessionToken.newInstance();
+
+        fusedClient = LocationServices.getFusedLocationProviderClient(this);
+
+        // 地址下拉适配器
+        addrAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, suggestions);
+        etLocation.setAdapter(addrAdapter);
+        etLocation.setThreshold(1);
+
+        // 文本变化 -> 防抖 -> 自动补全
+        etLocation.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) {
+                // 用户重新编辑，清空已有坐标，避免错位
+                latitude = 0; longitude = 0;
+                if (pendingSearch != null) uiHandler.removeCallbacks(pendingSearch);
+                String q = s.toString().trim();
+                if (q.isEmpty()) {
+                    suggestions.clear();
+                    suggestionPlaceIds.clear();
+                    addrAdapter.notifyDataSetChanged();
+                    return;
+                }
+                pendingSearch = () -> queryAutocomplete(q);
+                uiHandler.postDelayed(pendingSearch, 250);
+            }
+        });
+
+        // 键盘搜索也可触发一次
+        etLocation.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                queryAutocomplete(etLocation.getText().toString().trim());
+                return true;
+            }
+            return false;
+        });
+
+        // 选择候选 -> 拉详情（经纬度+标准地址）
+        etLocation.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < 0 || position >= suggestionPlaceIds.size()) return;
+            fetchPlaceDetail(suggestionPlaceIds.get(position));
+        });
+
+        // GPS按钮
+        btnUseGps.setOnClickListener(v -> {
+            if (hasLocationPermission()) {
+                checkLocationSettingsThenUse();
+            } else {
+                new AlertDialog.Builder(this)
+                        .setTitle("Enable location?")
+                        .setMessage("To autofill nearby addresses, allow EqualTrip to access your location.")
+                        .setPositiveButton("Allow", (d, w) -> requestLocationPerms.launch(new String[]{
+                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION
+                        }))
+                        .setNegativeButton("Not now", null)
+                        .show();
+            }
+        });
     }
 
     private void loadTripDateRange() {
@@ -208,7 +337,7 @@ public class AddBillActivity extends AppCompatActivity {
         // Edit texts
         etBillName = findViewById(R.id.et_bill_name);
         etMerchant = findViewById(R.id.et_merchant);
-        etLocation = findViewById(R.id.et_location);
+        etLocation = findViewById(R.id.et_location); // AutoCompleteTextView
         etAmount   = findViewById(R.id.et_amount);
 
         // Text views
@@ -256,6 +385,9 @@ public class AddBillActivity extends AppCompatActivity {
         rvReceipts.setLayoutManager(lm);
         receiptsAdapter = new ReceiptsAdapter(receiptUris, this::removeOneReceipt);
         rvReceipts.setAdapter(receiptsAdapter);
+
+        // 新增：GPS按钮
+        btnUseGps = findViewById(R.id.btn_use_gps);
     }
 
     private void setupSplitRecyclerView() {
@@ -266,13 +398,6 @@ public class AddBillActivity extends AppCompatActivity {
         });
         rvSplitAmounts.setAdapter(splitAdapter);
     }
-
-    // 摄像头权限
-    private final ActivityResultLauncher<String> requestCameraPerm =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
-                if (granted) openCamera();
-                else Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
-            });
 
     private void tryOpenCamera() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
@@ -384,7 +509,7 @@ public class AddBillActivity extends AppCompatActivity {
     // ====== 相机/相册 ======
     void openCamera() {
         try {
-            pendingCameraOutputUri = createImageOutputUri(); // 生成 content:// Uri
+            pendingCameraOutputUri = createImageOutputUri();
             if (pendingCameraOutputUri != null) {
                 takePictureLauncher.launch(pendingCameraOutputUri);
             } else {
@@ -535,7 +660,7 @@ public class AddBillActivity extends AppCompatActivity {
 
     private void setupCategoryButtons() {
         View.OnClickListener categoryClickListener = v -> {
-            categoryManuallyChosen = true; // 用户手动选择了分类，后续不再自动覆盖
+            categoryManuallyChosen = true;
             resetCategoryButtons();
 
             if (v == btnDining) {
@@ -558,7 +683,6 @@ public class AddBillActivity extends AppCompatActivity {
         btnShopping.setOnClickListener(categoryClickListener);
         btnOther.setOnClickListener(categoryClickListener);
 
-        // 启动时所有分类都熄灭
         resetCategoryButtons();
     }
 
@@ -635,7 +759,7 @@ public class AddBillActivity extends AppCompatActivity {
     }
 
     /** =========================
-     *   创建账单 -> 地理编码(正向+反向自动分类) -> 上传 -> 回传给 Home
+     *   创建账单（若已有坐标则跳过前向地理编码）
      *  ========================= */
     private void createBill() {
         if (etBillName.getText().toString().trim().isEmpty()) {
@@ -691,6 +815,14 @@ public class AddBillActivity extends AppCompatActivity {
         }
 
         final String address = etLocation.getText().toString().trim();
+
+        // ★ 若已通过联想/定位拿到经纬度，就不再调用 Nominatim 前向地理编码
+        if (latitude != 0.0 || longitude != 0.0) {
+            fetchCategoryFromNominatimDebounced(latitude, longitude, this::uploadBillWithGeoThenReturn);
+            return;
+        }
+
+        // 否则按你原逻辑：Nominatim 正向地理编码
         geocodeForward(address, new GeoCallback() {
             @Override public void onSuccess(double lat, double lon) {
                 latitude = lat;
@@ -706,7 +838,7 @@ public class AddBillActivity extends AppCompatActivity {
         });
     }
 
-    /** 正向地理编码 */
+    /** 正向地理编码（Nominatim） */
     private void geocodeForward(String query, GeoCallback cb) {
         final String q;
         try {
@@ -774,12 +906,10 @@ public class AddBillActivity extends AppCompatActivity {
                     if (response != null) response.close();
                 }
             }
-
-            private boolean isEmpty(String s) { return s == null || s.isEmpty(); }
         });
     }
 
-    /** 去抖 + 冷却 */
+    /** 去抖 + 冷却（Nominatim 反向） */
     private void fetchCategoryFromNominatimDebounced(double lat, double lon, Runnable after) {
         long now = System.currentTimeMillis();
         long since = now - lastNominatimCallMs;
@@ -800,7 +930,7 @@ public class AddBillActivity extends AppCompatActivity {
         fetchCategoryFromNominatimInternal(lat, lon, after);
     }
 
-    /** 反向地理编码（含重试） */
+    /** 反向地理编码（Nominatim） */
     private void fetchCategoryFromNominatimInternal(double lat, double lon, Runnable after) {
         lastNominatimCallMs = System.currentTimeMillis();
 
@@ -866,7 +996,7 @@ public class AddBillActivity extends AppCompatActivity {
         });
     }
 
-    /** 根据 Nominatim 返回的字段自动分类（除非用户手动点过） */
+    /** 自动分类（除非用户手动点过） */
     private void autoSelectCategory(String raw) {
         if (categoryManuallyChosen) return;
         if (raw == null) raw = "";
@@ -907,7 +1037,7 @@ public class AddBillActivity extends AppCompatActivity {
         setCategorySelected(btnOther, true);
     }
 
-    /** 上传 Firestore（含收据上传到 Firebase Storage），成功后回传坐标再关闭 */
+    /** 上传 Firestore（含收据上传）后回传坐标并结束 */
     private void uploadBillWithGeoThenReturn() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
@@ -1001,7 +1131,6 @@ public class AddBillActivity extends AppCompatActivity {
         return null;
     }
 
-    /** 回传坐标和标题给 HomeActivity，并结束页面 */
     private void returnMarkerToHomeAndFinish() {
         String title = etBillName.getText().toString().trim();
         if (title.isEmpty()) title = etMerchant.getText().toString().trim();
@@ -1047,9 +1176,8 @@ public class AddBillActivity extends AppCompatActivity {
                     pendingCameraOutputUri = null;
                     updateReceiptUI();
 
-                    // ★ 只有当选择了“Scan & Autofill (Camera)”时才识图
                     if (ocrAfterNextCapture) {
-                        ocrAfterNextCapture = false; // 用完即清
+                        ocrAfterNextCapture = false;
                         runOcrOnUri(justTaken);
                     }
                 } else {
@@ -1070,7 +1198,6 @@ public class AddBillActivity extends AppCompatActivity {
                 }
                 receiptUris.addAll(uris);
                 updateReceiptUI();
-                // 不自动识图
             });
 
     private final ActivityResultLauncher<String> pickOneImageForOcr =
@@ -1090,7 +1217,6 @@ public class AddBillActivity extends AppCompatActivity {
                 }
             });
 
-    // 根据列表是否为空切换 placeholder/preview，并刷新列表
     void updateReceiptUI() {
         hasReceipt = !receiptUris.isEmpty();
         if (hasReceipt) {
@@ -1116,7 +1242,6 @@ public class AddBillActivity extends AppCompatActivity {
         updateReceiptUI();
     }
 
-    // 如果是 app 专属目录文件，把它删掉（相册里不会有）
     private void cleanupIfTempFile(Uri uri) {
         if (uri == null) return;
         try {
@@ -1150,7 +1275,6 @@ public class AddBillActivity extends AppCompatActivity {
         }
     }
 
-    // ======= Adapter for receipts =======
     private static class ReceiptVH extends RecyclerView.ViewHolder {
         ImageView ivThumb;
         ImageButton btnDelete;
@@ -1191,7 +1315,6 @@ public class AddBillActivity extends AppCompatActivity {
     }
 
     // ======= OCR 流程 =======
-
     private void startOcrUi() {
         if (ocrOverlay != null) ocrOverlay.setVisibility(View.VISIBLE);
         if (tvOcrStatus != null) tvOcrStatus.setText(getString(R.string.ocr_recognizing));
@@ -1271,11 +1394,187 @@ public class AddBillActivity extends AppCompatActivity {
         super.onDestroy();
         try { if (latinRecognizer != null) latinRecognizer.close(); } catch (Exception ignored) {}
         try { if (chineseRecognizer != null) chineseRecognizer.close(); } catch (Exception ignored) {}
+        cts.cancel();
     }
 
     // —— 地理编码回调接口 —— //
     private interface GeoCallback {
         void onSuccess(double lat, double lon);
         void onError(String msg);
+    }
+
+    // ====== 下面是新增：Places 自动补全 + 定位实现 ======
+
+    /** 自动补全查询 */
+    private void queryAutocomplete(String query) {
+        RectangularBounds bias = null;
+        if (latitude != 0 && longitude != 0) {
+            double d = 0.08;
+            bias = RectangularBounds.newInstance(
+                    new LatLng(latitude - d, longitude - d),
+                    new LatLng(latitude + d, longitude + d)
+            );
+        }
+
+        FindAutocompletePredictionsRequest.Builder builder =
+                FindAutocompletePredictionsRequest.builder()
+                        .setSessionToken(sessionToken)
+                        .setQuery(query)
+                        .setTypesFilter(Collections.singletonList("address"));
+
+        if (bias != null) builder.setLocationBias(bias);
+
+        List<String> countries = getLikelyCountry();
+        if (!countries.isEmpty()) builder.setCountries(countries);
+
+        placesClient.findAutocompletePredictions(builder.build())
+                .addOnSuccessListener(resp -> {
+                    suggestions.clear();
+                    suggestionPlaceIds.clear();
+                    for (AutocompletePrediction p : resp.getAutocompletePredictions()) {
+                        suggestions.add(p.getFullText(null).toString());
+                        suggestionPlaceIds.add(p.getPlaceId());
+                    }
+                    addrAdapter.notifyDataSetChanged();
+                    if (!suggestions.isEmpty()) etLocation.showDropDown();
+                })
+                .addOnFailureListener(e -> {
+                    // 静默失败即可，避免打断用户
+                });
+    }
+
+    /** 根据 placeId 拉取经纬度与标准地址 */
+    private void fetchPlaceDetail(String placeId) {
+        List<Place.Field> fields = Arrays.asList(
+                Place.Field.ID, Place.Field.ADDRESS, Place.Field.LAT_LNG, Place.Field.NAME
+        );
+
+        FetchPlaceRequest req = FetchPlaceRequest.builder(placeId, fields)
+                .setSessionToken(sessionToken).build();
+
+        placesClient.fetchPlace(req)
+                .addOnSuccessListener((FetchPlaceResponse res) -> {
+                    Place place = res.getPlace();
+                    LatLng latLng = place.getLatLng();
+                    if (latLng != null) {
+                        latitude = latLng.latitude;
+                        longitude = latLng.longitude;
+                    }
+                    String addr = place.getAddress() != null ? place.getAddress() : place.getName();
+                    if (addr == null) addr = "";
+                    etLocation.setText(addr);
+                    etLocation.setSelection(addr.length());
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Failed to fetch place detail", Toast.LENGTH_SHORT).show());
+    }
+
+    /** 获取当前定位并反向地理编码成地址 */
+    private void checkLocationSettingsThenUse() {
+        LocationRequest req = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000).build();
+        LocationSettingsRequest settingsRequest = new LocationSettingsRequest.Builder()
+                .addLocationRequest(req).setAlwaysShow(true).build();
+
+        SettingsClient sc = LocationServices.getSettingsClient(this);
+        Task<LocationSettingsResponse> t = sc.checkLocationSettings(settingsRequest);
+        t.addOnSuccessListener(r -> useCurrentLocation());
+        t.addOnFailureListener(e -> {
+            if (e instanceof ResolvableApiException) {
+                try {
+                    ((ResolvableApiException) e).startResolutionForResult(this, 9911);
+                } catch (Exception ignored) {
+                    Toast.makeText(this, "Please enable location services", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(this, "Location settings unavailable", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @SuppressLint("MissingPermission") // 我们在方法内有 hasLocationPermission() 的显式检查
+    private void useCurrentLocation() {
+        // 如果没有权限，直接返回（不会触发危险调用）
+        if (!hasLocationPermission()) {
+            Toast.makeText(this, "Location permission not granted", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            CurrentLocationRequest clr = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .setMaxUpdateAgeMillis(30000)
+                    .build();
+
+            fusedClient.getCurrentLocation(clr, cts.getToken())
+                    .addOnSuccessListener(loc -> {
+                        if (loc == null) {
+                            Toast.makeText(this, "Failed to get current location", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        latitude = loc.getLatitude();
+                        longitude = loc.getLongitude();
+                        reverseGeocodeAndFill(latitude, longitude);
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Failed to get current location", Toast.LENGTH_SHORT).show();
+                    });
+
+        } catch (SecurityException se) {
+            // 极端情况下（权限刚被撤回/系统策略变更）仍可能抛出
+            Toast.makeText(this, "Location permission denied by system", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    private void reverseGeocodeAndFill(double lat, double lon) {
+        if (Geocoder.isPresent()) {
+            try {
+                Geocoder geo = new Geocoder(this, Locale.getDefault());
+                List<Address> list = geo.getFromLocation(lat, lon, 1);
+                if (list != null && !list.isEmpty()) {
+                    Address a = list.get(0);
+                    String line = a.getAddressLine(0);
+                    if (line == null) line = compactAddress(a);
+                    String addr = (line != null) ? line : (lat + "," + lon);
+                    etLocation.setText(addr);
+                    etLocation.setSelection(addr.length());
+                    return;
+                }
+            } catch (IOException ignored) {}
+        }
+        String addr = lat + "," + lon;
+        etLocation.setText(addr);
+        etLocation.setSelection(addr.length());
+    }
+
+    private String compactAddress(Address a) {
+        List<String> parts = new ArrayList<>();
+        if (a.getSubThoroughfare() != null) parts.add(a.getSubThoroughfare());
+        if (a.getThoroughfare() != null) parts.add(a.getThoroughfare());
+        if (a.getLocality() != null) parts.add(a.getLocality());
+        if (a.getAdminArea() != null) parts.add(a.getAdminArea());
+        if (a.getPostalCode() != null) parts.add(a.getPostalCode());
+        if (a.getCountryName() != null) parts.add(a.getCountryName());
+        return String.join(", ", parts);
+    }
+
+    /** 根据 SIM/Locale 推断国家，避免硬编码 */
+    private List<String> getLikelyCountry() {
+        try {
+            TelephonyManager tm = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+            String simIso = tm != null ? tm.getSimCountryIso() : null;
+            if (simIso != null && !simIso.isEmpty()) {
+                return Collections.singletonList(simIso.toUpperCase(Locale.ROOT));
+            }
+        } catch (Exception ignored) {}
+        String region = Locale.getDefault().getCountry();
+        if (region != null && !region.isEmpty()) {
+            return Collections.singletonList(region.toUpperCase(Locale.ROOT));
+        }
+        return Collections.emptyList();
     }
 }
