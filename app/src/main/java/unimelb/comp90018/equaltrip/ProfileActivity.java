@@ -18,26 +18,17 @@ import androidx.core.content.ContextCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.switchmaterial.SwitchMaterial;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 public class ProfileActivity extends AppCompatActivity {
 
     private SwitchMaterial swLocation, swNotification, swBluetooth, swCamera;
     private TextView tvCurrencyValue;
 
-    // 资料头部
-    private TextView tvProfileName, tvProfileEmail;
-    private LinearLayout rowChangeName;
-
     private static final int RC_LOCATION = 101;
     private static final int RC_NOTI = 102;
     private static final int RC_BT = 103;
     private static final int RC_CAMERA = 104;
 
-    // BottomNav
     private boolean suppressNav = false;
     private BottomNavigationView bottom;
 
@@ -46,60 +37,20 @@ public class ProfileActivity extends AppCompatActivity {
             "AUD Australian Dollar","USD United States Dollar","EUR Euro","CNY Chinese Yuan"
     };
 
-    // Firebase
-    private FirebaseAuth mAuth;
-    private FirebaseUser currentUser;
-    private FirebaseFirestore db;
-    private DocumentReference attachedUserDoc; // 真正监听到的那条文档
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        // ===== 绑定视图 =====
-        swLocation      = findViewById(R.id.swLocation);
-        swNotification  = findViewById(R.id.swNotification);
-        swBluetooth     = findViewById(R.id.swBluetooth);
-        swCamera        = findViewById(R.id.swCamera);
+        swLocation = findViewById(R.id.swLocation);
+        swNotification = findViewById(R.id.swNotification);
+        swBluetooth = findViewById(R.id.swBluetooth);
+        swCamera = findViewById(R.id.swCamera);
         tvCurrencyValue = findViewById(R.id.tvCurrencyValue);
         LinearLayout rowCurrency = findViewById(R.id.rowCurrency);
-        bottom = findViewById(R.id.bottomNav);   // 和 XML 一致的 id
+        bottom = findViewById(R.id.bottom_nav);
 
-        tvProfileName  = findViewById(R.id.tvProfileName);
-        tvProfileEmail = findViewById(R.id.tvProfileEmail);
-        rowChangeName  = findViewById(R.id.rowChangeName);
-
-        // 跳到改名页（容错：控件可能不存在）
-        if (rowChangeName != null) {
-            rowChangeName.setOnClickListener(v ->
-                    startActivity(new Intent(ProfileActivity.this, ChangeNameActivity.class)));
-        }
-        TextView tvEdit = findViewById(R.id.tvEdit);
-        if (tvEdit != null) {
-            tvEdit.setOnClickListener(v ->
-                    startActivity(new Intent(ProfileActivity.this, ChangeNameActivity.class)));
-        }
-
-        // ===== Firebase =====
-        mAuth = FirebaseAuth.getInstance();
-        currentUser = mAuth.getCurrentUser();
-        db = FirebaseFirestore.getInstance();
-
-        if (currentUser == null) {
-            startActivity(new Intent(this, SignUpActivity.class));
-            finish();
-            return;
-        }
-
-        // 先用 Auth 邮箱兜底，让 UI 立即有值
-        String authEmail = currentUser.getEmail();
-        tvProfileEmail.setText(authEmail != null ? authEmail : "No email");
-
-        // 尝试附着用户文档并监听（支持文档ID不是uid的情况）
-        attachUserProfileListener(currentUser.getUid());
-
-        // ===== 权限开关初始化 =====
+        // 初始化开关
         swLocation.setChecked(hasPermission(Manifest.permission.ACCESS_FINE_LOCATION));
         if (Build.VERSION.SDK_INT >= 33) {
             swNotification.setChecked(hasPermission(Manifest.permission.POST_NOTIFICATIONS));
@@ -165,82 +116,16 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    /** 同步用户资料：
-     * 1) 先查 users/{uid}
-     * 2) 若不存在，再查 users where uid == <auth uid> limit 1
-     * 3) 找到文档后，挂 snapshotListener 实时更新 UI（userId 与 email）
-     */
-    private void attachUserProfileListener(String authUid) {
-        DocumentReference docById = db.collection("users").document(authUid);
-        docById.get().addOnSuccessListener(snap -> {
-            if (snap != null && snap.exists()) {
-                attachListenerOnDoc(docById);
-            } else {
-                db.collection("users")
-                        .whereEqualTo("uid", authUid)
-                        .limit(1)
-                        .get()
-                        .addOnSuccessListener(qs -> {
-                            if (!qs.isEmpty()) {
-                                DocumentReference realDoc = qs.getDocuments().get(0).getReference();
-                                attachListenerOnDoc(realDoc);
-                            } else {
-                                String fallback = (currentUser.getDisplayName() != null &&
-                                        !currentUser.getDisplayName().isEmpty())
-                                        ? currentUser.getDisplayName() : "User";
-                                tvProfileName.setText(fallback);
-                            }
-                        })
-                        .addOnFailureListener(e -> {
-                            String fallback = (currentUser.getDisplayName() != null &&
-                                    !currentUser.getDisplayName().isEmpty())
-                                    ? currentUser.getDisplayName() : "User";
-                            tvProfileName.setText(fallback);
-                        });
-            }
-        }).addOnFailureListener(e -> {
-            String fallback = (currentUser.getDisplayName() != null &&
-                    !currentUser.getDisplayName().isEmpty())
-                    ? currentUser.getDisplayName() : "User";
-            tvProfileName.setText(fallback);
-        });
-    }
-
-    private void attachListenerOnDoc(DocumentReference userDoc) {
-        attachedUserDoc = userDoc;
-        attachedUserDoc.addSnapshotListener(this, (snap, e) -> {
-            if (e != null || snap == null) return;
-            if (!snap.exists()) return;
-
-            // 名字：优先 userId
-            String name = snap.getString("userId");
-            if (name == null || name.trim().isEmpty()) {
-                String fallback = (currentUser.getDisplayName() != null &&
-                        !currentUser.getDisplayName().isEmpty())
-                        ? currentUser.getDisplayName() : "User";
-                tvProfileName.setText(fallback);
-            } else {
-                tvProfileName.setText(name);
-            }
-
-            // 邮箱：优先用文档字段 email，其次 Auth 邮箱
-            String mail = snap.getString("email");
-            if (mail == null || mail.trim().isEmpty()) {
-                mail = currentUser.getEmail();
-            }
-            tvProfileEmail.setText(mail != null ? mail : "No email");
-        });
-    }
-
-    // ===== 工具方法 =====
     private boolean hasPermission(String perm) {
         return ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED;
     }
+
     private void requestIfNeeded(String perm, int rc) {
         if (!hasPermission(perm) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(new String[]{perm}, rc);
         }
     }
+
     private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
 
     private void showCurrencyDialog() {
