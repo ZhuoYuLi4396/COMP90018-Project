@@ -25,10 +25,16 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
-    <!-- 扫描 BLE 在 Android 10 及以下必须要定位权限（且系统位置开关需开启） -->
+    <!-- 扫描 BLE 在 Android 10 及以下必须要定位权限（且系统位置开关需开启）
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
         android:maxSdkVersion="30" />
+        android:maxSdkVersion="30" />  -->
+
+    <!-- ✅ 定位权限（无上限） -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- （可选）再补一条 COARSE 给更老的机型；FINE 已覆盖，可不写 -->
     <!--
     <uses-permission
@@ -132,6 +138,13 @@
         <activity android:name=".AddTripActivity"
             android:windowSoftInputMode="adjustResize"
             />
+
+        <!--Change Name Activity-->
+        <activity
+            android:name=".ChangeNameActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EqualTrip"/>
+
 
         <!-- Payer Selection Activity -->
         <activity
