@@ -211,6 +211,11 @@ public class AddBillActivity extends AppCompatActivity {
     private final CancellationTokenSource cts = new CancellationTokenSource();
     private ImageButton btnUseGps; // 右侧 GPS 按钮
 
+    // Java is the best language.py
+    // This createBill() keep call the void to execute search category and auto-fill
+    // write boolean to avoid search again.
+    private boolean categoryLocked = false;
+
     // 位置权限（一次性多权限）
     private final ActivityResultLauncher<String[]> requestLocationPerms =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
@@ -268,7 +273,7 @@ public class AddBillActivity extends AppCompatActivity {
         setupSpinners();
         setupCategoryButtons();
         setupSplitRecyclerView();
-        
+
 
         // Set default date
         tvDate.setText(dateFormat.format(calendar.getTime()));
@@ -325,6 +330,7 @@ public class AddBillActivity extends AppCompatActivity {
 
         // GPS按钮
         btnUseGps.setOnClickListener(v -> {
+            categoryLocked = false;
             if (hasLocationPermission()) {
                 checkLocationSettingsThenUse();
             } else {
@@ -669,6 +675,9 @@ public class AddBillActivity extends AppCompatActivity {
 
     private void setupCategoryButtons() {
         View.OnClickListener categoryClickListener = v -> {
+            categoryLocked = true;
+            categoryManuallyChosen = true;
+
             // Reset all category buttons
             resetCategoryButtons();
 
@@ -942,6 +951,7 @@ public class AddBillActivity extends AppCompatActivity {
     }
 
     private void createBill() {
+
         // Validate inputs
         if (etBillName.getText().toString().trim().isEmpty()) {
             Toast.makeText(this, "Please enter bill name", Toast.LENGTH_SHORT).show();
@@ -1012,8 +1022,15 @@ public class AddBillActivity extends AppCompatActivity {
         final String address = etLocation.getText().toString().trim();
 
         // ★ 若已通过联想/定位拿到经纬度，就不再调用 Nominatim 前向地理编码
+        /*
         if (latitude != 0.0 || longitude != 0.0) {
             fetchCategoryFromNominatimDebounced(latitude, longitude, this::uploadBillWithGeoThenReturn);
+            return;
+        }
+        */
+        if (latitude != 0.0 || longitude != 0.0) {
+            // ✅ 直接跳过第二次分类查询
+            uploadBillWithGeoThenReturn();
             return;
         }
 
@@ -1192,6 +1209,8 @@ public class AddBillActivity extends AppCompatActivity {
 
     /** 自动分类（除非用户手动点过） */
     private void autoSelectCategory(String raw) {
+        if (categoryLocked) return;
+
         if (categoryManuallyChosen) return;
         if (raw == null) raw = "";
         String s = raw.toLowerCase(Locale.ROOT);
@@ -1205,6 +1224,7 @@ public class AddBillActivity extends AppCompatActivity {
                 s.contains("cafe")                || s.contains("food")) {
             selectedCategory = "dining";
             setCategorySelected(btnDining, true);
+            categoryLocked = true;
             return;
         }
 
@@ -1213,6 +1233,7 @@ public class AddBillActivity extends AppCompatActivity {
                 s.contains("mall") || s.contains("supermarket") || s.contains("retail")) {
             selectedCategory = "shopping";
             setCategorySelected(btnShopping, true);
+            categoryLocked = true;
             return;
         }
 
@@ -1223,20 +1244,20 @@ public class AddBillActivity extends AppCompatActivity {
                 s.contains("transport")) {
             selectedCategory = "transport";
             setCategorySelected(btnTransport, true);
+            categoryLocked = true;
             return;
         }
 
         // Other
         selectedCategory = "other";
         setCategorySelected(btnOther, true);
+        categoryLocked = true;
     }
     private void uploadBillWithGeoThenReturn() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         String billId = db.collection("trips").document(tripId)
                 .collection("bills").document().getId();
-
-        List<String> receiptUrlList = new ArrayList<>();
 
         Map<String, Object> billData = new HashMap<>();
         billData.put("billName", etBillName.getText().toString().trim());
@@ -1250,13 +1271,13 @@ public class AddBillActivity extends AppCompatActivity {
         geoPoint.put("lon", longitude);
         billData.put("geo", geoPoint);
 
-        billData.put("receiptUrls", receiptUrlList);
         billData.put("currency", spinnerCurrency.getSelectedItem().toString());
         billData.put("paidBy", selectedPayerUid);
         billData.put("participants", new ArrayList<>(selectedParticipantUids));
         billData.put("createdAt", new Timestamp(calendar.getTime()));
         billData.put("date", new Timestamp(calendar.getTime()));
 
+        // ======= debts =======
         List<Map<String, Object>> debtsList = new ArrayList<>();
         for (ParticipantSplit split : participantSplits) {
             if (!split.getName().equals(selectedPayerUserId)) {
@@ -1272,9 +1293,9 @@ public class AddBillActivity extends AppCompatActivity {
         }
         billData.put("debts", debtsList);
 
-        StorageReference storageRef = FirebaseStorage.getInstance().getReference();
-
+        // ✅ Base64 逻辑核心：把图片转成 Base64 字符串
         if (receiptUris.isEmpty()) {
+            // 没有收据，直接上传 Firestore
             db.collection("trips").document(tripId)
                     .collection("bills").document(billId)
                     .set(billData)
@@ -1286,34 +1307,37 @@ public class AddBillActivity extends AppCompatActivity {
                             Toast.makeText(this, "Error uploading bill: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                     );
         } else {
-            List<String> uploaded = new ArrayList<>();
+            // 有收据，压缩 + 编码
+            List<String> base64List = new ArrayList<>();
             for (Uri uri : receiptUris) {
-                StorageReference fileRef = storageRef.child("receipts/" + tripId + "/" + System.currentTimeMillis() + ".jpg");
-                fileRef.putFile(uri)
-                        .addOnSuccessListener(taskSnapshot ->
-                                fileRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
-                                    uploaded.add(downloadUri.toString());
-                                    if (uploaded.size() == receiptUris.size()) {
-                                        billData.put("receiptUrls", uploaded);
-                                        db.collection("trips").document(tripId)
-                                                .collection("bills").document(billId)
-                                                .set(billData)
-                                                .addOnSuccessListener(aVoid -> {
-                                                    Toast.makeText(this, "Bill uploaded with images!", Toast.LENGTH_SHORT).show();
-                                                    returnMarkerToHomeAndFinish();
-                                                })
-                                                .addOnFailureListener(e ->
-                                                        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                                                );
-                                    }
-                                })
-                        )
-                        .addOnFailureListener(e ->
-                                Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                        );
+                try {
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos); // 压缩质量
+                    bitmap.recycle();
+                    String base64Image = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+                    base64List.add(base64Image);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
+
+            // 添加到 Firestore 文档
+            billData.put("receiptsBase64", base64List);
+
+            db.collection("trips").document(tripId)
+                    .collection("bills").document(billId)
+                    .set(billData)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Bill uploaded with Base64 images!", Toast.LENGTH_SHORT).show();
+                        returnMarkerToHomeAndFinish();
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this, "Error uploading bill: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                    );
         }
     }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -1790,7 +1814,7 @@ public class AddBillActivity extends AppCompatActivity {
                         latitude = lat;
                         longitude = lon;
                         reverseGeocodeAndFill(lat, lon);
-                        fetchCategoryFromNominatim(lat, lon);
+                        fetchCategoryFromNominatimDebounced(lat, lon, null);
 
                         Toast.makeText(AddBillActivity.this,
                                 String.format(Locale.getDefault(),
@@ -1825,7 +1849,7 @@ public class AddBillActivity extends AppCompatActivity {
                     Log.d("GPS", "Raw GPS acc=" + acc);
 
                     reverseGeocodeAndFill(latitude, longitude);
-                    fetchCategoryFromNominatim(latitude, longitude);
+                    fetchCategoryFromNominatimDebounced(latitude, longitude, null);
 
                     Toast.makeText(AddBillActivity.this,
                             String.format(Locale.getDefault(),
@@ -1843,9 +1867,6 @@ public class AddBillActivity extends AppCompatActivity {
     private final LocationListener dummyListener = new LocationListener() {
         @Override public void onLocationChanged(@NonNull Location location) {}
     };
-
-
-
 
     private void reverseGeocodeAndFill(double lat, double lon) {
         // 优先用系统 Geocoder
@@ -1956,80 +1977,4 @@ public class AddBillActivity extends AppCompatActivity {
         }
         return Collections.emptyList();
     }
-
-    // 封装后的nominatim
-    private void fetchCategoryFromNominatim(double lat, double lon) {
-        String url = "https://nominatim.openstreetmap.org/reverse?format=json&lat="
-                + lat + "&lon=" + lon + "&zoom=18&addressdetails=1";
-
-        OkHttpClient client = new OkHttpClient();
-
-        Request request = new Request.Builder()
-                .url(url)
-                .header("User-Agent", "EqualTrip/1.0") // Nominatim 必须有 UA
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                runOnUiThread(() ->
-                        Toast.makeText(AddBillActivity.this, "API 请求失败", Toast.LENGTH_SHORT).show()
-                );
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (!response.isSuccessful()) return;
-
-                try {
-                    String body = response.body().string();
-                    JSONObject json = new JSONObject(body);
-
-                    String cls = json.optString("class", "");
-                    String typ = json.optString("type", "");
-
-                    String category;
-                    if (!cls.isEmpty() && !typ.isEmpty()) {
-                        category = cls + " · " + typ;
-                    } else if (!cls.isEmpty()) {
-                        category = cls;
-                    } else if (!typ.isEmpty()) {
-                        category = typ;
-                    } else {
-                        category = "other"; // 默认值
-                    }
-
-                    // 在 UI 线程更新分类（比如自动选按钮）
-                    runOnUiThread(() -> {
-                        autoSelectCategory_nominatim(category);
-                    });
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-    }
-    private void autoSelectCategory_nominatim(String category) {
-        category = category.toLowerCase();
-
-        if (category.contains("restaurant") || category.contains("food") || category.contains("cafe")) {
-            selectedCategory = "dining";
-            // setCategorySelected(btnDining, true);
-        } else if (category.contains("shop") || category.contains("mall")) {
-            selectedCategory = "shopping";
-            setCategorySelected(btnShopping, true);
-        } else if (category.contains("bus") || category.contains("railway") || category.contains("transport")) {
-            selectedCategory = "transport";
-            setCategorySelected(btnTransport, true);
-        } else {
-            selectedCategory = "other";
-            setCategorySelected(btnOther, true);
-        }
-    }
 }
-
-
-
-
-
