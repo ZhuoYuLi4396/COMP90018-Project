@@ -36,7 +36,6 @@
         android:maxSdkVersion="28" />
     -->
 
-
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <!-- 运行时相机权限（Android 6+ 为危险权限，需要在代码里 request） -->
@@ -121,11 +120,6 @@
             android:launchMode="singleTop" />
 
         <activity
-            android:name=".EditTripActivity"
-            android:exported="false"
-            android:parentActivityName=".TripDetailActivity" />
-
-        <activity
             android:name=".AlgorithmTestActivity"
             android:exported="true" />
 
@@ -138,13 +132,6 @@
         <activity android:name=".AddTripActivity"
             android:windowSoftInputMode="adjustResize"
             />
-
-        <!--Change Name Activity-->
-        <activity
-            android:name=".ChangeNameActivity"
-            android:exported="false"
-            android:theme="@style/Theme.EqualTrip"/>
-
 
         <!-- Payer Selection Activity -->
         <activity

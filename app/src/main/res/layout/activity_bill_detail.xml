@@ -102,7 +102,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
-            
+
             <!-- Map Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -111,13 +111,14 @@
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp">
 
-                <com.google.android.gms.maps.MapView
-                    android:id="@+id/mapBill"
+                <ImageView
+                    android:id="@+id/ivMap"
                     android:layout_width="match_parent"
                     android:layout_height="180dp"
+                    android:scaleType="centerCrop"
                     android:background="#E0E0E0"/>
-            </com.google.android.material.card.MaterialCardView>
 
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Paid by Section -->
             <com.google.android.material.card.MaterialCardView
