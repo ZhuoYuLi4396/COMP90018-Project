@@ -308,6 +308,7 @@ public class AddBillActivity extends AppCompatActivity {
                         .show();
             }
         });
+
     }
 
     private void loadTripDateRange() {
@@ -1417,6 +1418,18 @@ public class AddBillActivity extends AppCompatActivity {
     // ====== 下面是新增：Places 自动补全 + 定位实现 ======
 
     /** 自动补全查询 */
+
+    private void applyCountryIfSafe(FindAutocompletePredictionsRequest.Builder builder) {
+        // 1) 已有定位：只用 locationBias，不要 setCountries（避免冲突/误限）
+        if (latitude != 0 && longitude != 0) return;
+
+        // 2) 无定位，用系统 Locale，而不是 SIM
+        String region = Locale.getDefault().getCountry();
+        if (region != null && !region.isEmpty()) {
+            builder.setCountries(Collections.singletonList(region.toUpperCase(Locale.ROOT)));
+        }
+        // 3) 否则不设国家（全球）
+    }
     private void queryAutocomplete(String query) {
         RectangularBounds bias = null;
         if (latitude != 0 && longitude != 0) {
@@ -1430,15 +1443,12 @@ public class AddBillActivity extends AppCompatActivity {
         FindAutocompletePredictionsRequest.Builder builder =
                 FindAutocompletePredictionsRequest.builder()
                         .setSessionToken(sessionToken)
-                        .setQuery(query)
-                        // 更兼容 Android 13+，允许地标、店铺、POI
-                        .setCountries(getLikelyCountry());  // 限制国家（用你原函数）
-
+                        .setQuery(query);
 
         if (bias != null) builder.setLocationBias(bias);
 
-        List<String> countries = getLikelyCountry();
-        if (!countries.isEmpty()) builder.setCountries(countries);
+        // 🚫 不再直接 setCountries(getLikelyCountry())，改用更安全的方法
+        applyCountryIfSafe(builder);
 
         placesClient.findAutocompletePredictions(builder.build())
                 .addOnSuccessListener(resp -> {
@@ -1449,10 +1459,15 @@ public class AddBillActivity extends AppCompatActivity {
                         suggestionPlaceIds.add(p.getPlaceId());
                     }
                     addrAdapter.notifyDataSetChanged();
-                    if (!suggestions.isEmpty()) etLocation.showDropDown();
+                    if (!suggestions.isEmpty() && etLocation.hasFocus()) {
+                        etLocation.post(etLocation::showDropDown);
+                    }
+                    // 额外：打点看有多少返回
+                    Log.d("Places", "predictions=" + suggestions.size());
                 })
                 .addOnFailureListener(e -> {
-                    // 静默失败即可，避免打断用户
+                    Log.e("Places", "autocomplete failed", e);
+                    Toast.makeText(this, "Place 自动补全失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -1814,4 +1829,3 @@ public class AddBillActivity extends AppCompatActivity {
         }
     }
 }
-

@@ -32,6 +32,7 @@
     <!-- ✅ 定位权限（无上限） -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- （可选）再补一条 COARSE 给更老的机型；FINE 已覆盖，可不写 -->
     <!--

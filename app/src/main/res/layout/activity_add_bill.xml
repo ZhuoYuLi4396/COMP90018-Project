@@ -4,7 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F8F8F8">
+    android:background="#F8F8F8"
+    android:clipToPadding="false"
+    android:clipChildren="false">
 
     <!-- Header -->
     <RelativeLayout
@@ -37,13 +39,17 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:clipChildren="false">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="16dp"
+            android:clipToPadding="false"
+            android:clipChildren="false">
 
             <!-- Bill Name -->
             <TextView
@@ -95,6 +101,7 @@
                 android:layout_marginBottom="8dp" />
 
             <LinearLayout
+                android:id="@+id/row_location"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:background="@drawable/rounded_edittext_bg"
@@ -102,7 +109,9 @@
                 android:orientation="horizontal"
                 android:paddingStart="12dp"
                 android:paddingEnd="8dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="16dp"
+                android:clipToPadding="false"
+                android:clipChildren="false">
 
                 <ImageView
                     android:layout_width="20dp"
@@ -122,9 +131,11 @@
                     android:hint="Start typing e.g. 462 ..."
                     android:completionThreshold="1"
                     android:inputType="textPostalAddress"
-                    android:dropDownVerticalOffset="4dp"
+                    android:imeOptions="actionDone"
+                    android:dropDownAnchor="@id/row_location"
+                    android:dropDownVerticalOffset="8dp"
                     android:dropDownHeight="wrap_content"
-                    android:dropDownWidth="match_parent"/>
+                    android:dropDownWidth="match_parent" />
 
                 <ImageButton
                     android:id="@+id/btn_use_gps"
@@ -132,9 +143,8 @@
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_my_location"
-                    android:contentDescription="Use current location"/>
+                    android:contentDescription="Use current location" />
             </LinearLayout>
-
 
             <!-- Category -->
             <TextView
@@ -351,13 +361,6 @@
                     android:padding="12dp"
                     android:visibility="gone">
 
-<!--                    <ImageView-->
-<!--                        android:id="@+id/iv_receipt_preview"-->
-<!--                        android:layout_width="80dp"-->
-<!--                        android:layout_height="match_parent"-->
-<!--                        android:layout_alignParentStart="true"-->
-<!--                        android:background="#E0E0E0"-->
-<!--                        android:scaleType="centerCrop" />-->
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/rv_receipts"
                         android:layout_width="match_parent"
@@ -366,8 +369,6 @@
                         android:layout_toStartOf="@id/receipt_actions"
                         android:overScrollMode="never"
                         android:paddingEnd="8dp" />
-
-
 
                     <LinearLayout
                         android:id="@+id/receipt_actions"
