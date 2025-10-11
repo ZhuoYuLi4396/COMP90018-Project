@@ -2274,6 +2274,15 @@ public class AddBillActivity extends AppCompatActivity {
 
     /** 无计费：OSM 自动补全（附近 + 关键词），把经纬度作为“placeId”返回 */
 
+    /** 程序化回填地址（不会触发手动输入的警告） */
+    private void fillLocationProgrammatically(@NonNull String text) {
+        suppressLocationWatcher = true;                // 关掉 TextWatcher 的“手动输入”判定
+        locationPickedFromSuggestion = true;           // 视为已从候选/系统选择的有效地址
+        etLocation.setText(text);
+        etLocation.setSelection(text.length());
+        etLocation.post(() -> suppressLocationWatcher = false);
+    }
+
     private void reverseGeocodeAndFill(double lat, double lon) {
         // 优先用系统 Geocoder
         if (Geocoder.isPresent()) {
@@ -2284,8 +2293,7 @@ public class AddBillActivity extends AppCompatActivity {
                     Address a = list.get(0);
                     String line = a.getAddressLine(0);
                     if (line != null && !line.trim().isEmpty() && !line.equalsIgnoreCase("Melbourne, Victoria, Australia")) {
-                        etLocation.setText(line);
-                        etLocation.setSelection(line.length());
+                        fillLocationProgrammatically(line);
                         return; // ✅ 成功，直接返回
                     }
                 }
@@ -2306,8 +2314,7 @@ public class AddBillActivity extends AppCompatActivity {
             @Override public void onFailure(Call call, IOException e) {
                 runOnUiThread(() -> {
                     String fallback = lat + ", " + lon;
-                    etLocation.setText(fallback);
-                    etLocation.setSelection(fallback.length());
+                    fillLocationProgrammatically(fallback);
                 });
             }
 
@@ -2316,8 +2323,7 @@ public class AddBillActivity extends AppCompatActivity {
                     if (!response.isSuccessful()) {
                         runOnUiThread(() -> {
                             String fallback = lat + ", " + lon;
-                            etLocation.setText(fallback);
-                            etLocation.setSelection(fallback.length());
+                            fillLocationProgrammatically(fallback);
                         });
                         return;
                     }
@@ -2347,8 +2353,7 @@ public class AddBillActivity extends AppCompatActivity {
                 } catch (Exception ex) {
                     runOnUiThread(() -> {
                         String fallback = lat + ", " + lon;
-                        etLocation.setText(fallback);
-                        etLocation.setSelection(fallback.length());
+                        fillLocationProgrammatically(fallback);
                     });
                 } finally {
                     response.close();
