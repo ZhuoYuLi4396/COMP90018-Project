@@ -235,6 +235,35 @@ public class AddBillActivity extends AppCompatActivity {
                 else Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
             });
 
+    // —— 位置选择校验 —— //
+    // === 位置选择校验与来源标记 ===
+    private boolean locationPickedFromSuggestion = false;  // 只有点了候选或GPS反填才会置 true
+    private boolean usingOsmAutocomplete = true;           // 直接只用 OSM
+    // 防止旧网络回调把新结果清空
+    private int osmGen = 0;
+
+    // 距离排序的基准（优先用 HomeActivity 传来的）
+    private double lastKnownLat = Double.NaN;
+    private double lastKnownLon = Double.NaN;
+
+    // 抑制 TextWatcher 的一次性开关：当我们程序化 setText() 时置 true
+    private boolean suppressLocationWatcher = false;
+
+
+    private boolean isActive = false;
+    @Override protected void onStart() {
+        super.onStart();
+        isActive = true;
+    }
+    @Override protected void onStop() {
+        super.onStop();
+        isActive = false;
+    }
+
+
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -268,6 +297,25 @@ public class AddBillActivity extends AppCompatActivity {
         // 这里是测试tid确实被拿到后的测试输出
         Toast.makeText(this, "Received tripId: " + tripId, Toast.LENGTH_LONG).show();
 
+        // ① 从 HomeActivity 的 Intent 读入个人坐标（用于候选距离排序）
+        if (getIntent() != null) {
+            if (getIntent().hasExtra("base_lat") && getIntent().hasExtra("base_lon")) {
+                lastKnownLat = getIntent().getDoubleExtra("base_lat", Double.NaN);
+                lastKnownLon = getIntent().getDoubleExtra("base_lon", Double.NaN);
+            }
+        }
+// ② 兜底：从 SharedPreferences 取（HomeActivity 已写过）
+        if (Double.isNaN(lastKnownLat) || Double.isNaN(lastKnownLon)) {
+            String plat = getSharedPreferences("baseline_loc", MODE_PRIVATE).getString("lat", null);
+            String plon = getSharedPreferences("baseline_loc", MODE_PRIVATE).getString("lon", null);
+            if (plat != null && plon != null) {
+                try {
+                    lastKnownLat = Double.parseDouble(plat);
+                    lastKnownLon = Double.parseDouble(plon);
+                } catch (Exception ignored) {}
+            }
+        }
+
         initializeViews();
         setupListeners();
         setupSpinners();
@@ -280,11 +328,11 @@ public class AddBillActivity extends AppCompatActivity {
         loadTripDateRange();
 
         // ====== 初始化 Places & 定位 ======
-        if (!Places.isInitialized()) {
-            Places.initialize(getApplicationContext(), getString(R.string.PLACES_API_KEY));
-        }
-        placesClient = Places.createClient(this);
-        sessionToken = AutocompleteSessionToken.newInstance();
+//        if (!Places.isInitialized()) {
+//            Places.initialize(getApplicationContext(), getString(R.string.PLACES_API_KEY));
+//        }
+//        placesClient = Places.createClient(this);
+//        sessionToken = AutocompleteSessionToken.newInstance();
 
         fusedClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -292,25 +340,48 @@ public class AddBillActivity extends AppCompatActivity {
         addrAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, suggestions);
         etLocation.setAdapter(addrAdapter);
         etLocation.setThreshold(1);
+// === 启动实网探测：自动搜一次“462”（确认方法被调用）===
+        etLocation.postDelayed(() -> {
+            String probe = "462";
+            etLocation.setText(probe);
+            etLocation.setSelection(probe.length());
+            Log.d("OSM-PROBE", "Trigger probe query");
+            queryAutocompleteOSM(probe);
+        }, 800);
+
+
+
+
 
         // 文本变化 -> 防抖 -> 自动补全
         etLocation.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override public void afterTextChanged(Editable s) {
-                // 用户重新编辑，清空已有坐标，避免错位
-                latitude = 0; longitude = 0;
+                if (suppressLocationWatcher) {
+                    // 程序化回填文本，不要把“已从下拉选择”的标志清掉
+                    return;
+                }
+
+                locationPickedFromSuggestion = false;  // ← 仅在真正手动输入时清掉
                 if (pendingSearch != null) uiHandler.removeCallbacks(pendingSearch);
-                String q = s.toString().trim();
+
+                String q = s == null ? "" : s.toString().trim();
                 if (q.isEmpty()) {
                     suggestions.clear();
                     suggestionPlaceIds.clear();
-                    addrAdapter.notifyDataSetChanged();
+                    if (addrAdapter != null) addrAdapter.notifyDataSetChanged();
+                    etLocation.dismissDropDown();
                     return;
                 }
-                pendingSearch = () -> queryAutocomplete(q);
+                pendingSearch = () -> queryAutocompleteOSM(q);
                 uiHandler.postDelayed(pendingSearch, 250);
             }
+
+
+
+
+
         });
 
         // 键盘搜索也可触发一次
@@ -325,8 +396,53 @@ public class AddBillActivity extends AppCompatActivity {
         // 选择候选 -> 拉详情（经纬度+标准地址）
         etLocation.setOnItemClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= suggestionPlaceIds.size()) return;
-            fetchPlaceDetail(suggestionPlaceIds.get(position));
+
+            // 1) 告诉 TextWatcher：接下来是程序化回填，不要把标记清掉
+            suppressLocationWatcher = true;
+            locationPickedFromSuggestion = true;
+
+            // 2) 文本回填（部分机型不会自动回填，手动设置更保险）
+            if (position < suggestions.size()) {
+                String chosen = suggestions.get(position);
+                etLocation.setText(chosen);
+                etLocation.setSelection(chosen.length());
+            }
+
+            // 3) 解析坐标（我们把 placeId 用 "lat,lon" 存的）
+            String latlon = suggestionPlaceIds.get(position);
+            String[] parts = latlon.split(",");
+            if (parts.length == 2) {
+                try {
+                    latitude  = Double.parseDouble(parts[0]);
+                    longitude = Double.parseDouble(parts[1]);
+
+                    // 更新“距离排序基准”，后续输入仍然就近
+                    lastKnownLat = latitude;
+                    lastKnownLon = longitude;
+
+                    // 4) 先确保“未锁”，让自动分类能生效
+                    categoryLocked = false;
+
+                    // 5) 拉 Nominatim 反查并自动分类；完成后再把分类锁住，避免后续被覆盖
+                    fetchCategoryFromNominatimDebounced(latitude, longitude, () -> {
+                        // 回到主线程后再锁
+                        runOnUiThread(() -> categoryLocked = true);
+                    });
+                } catch (NumberFormatException ignored) {}
+            }
+
+            // 6) 让下拉收起更自然，并在下一帧恢复 watcher
+            etLocation.dismissDropDown();
+            etLocation.post(() -> suppressLocationWatcher = false);
         });
+
+
+
+
+
+
+
+
 
         // GPS按钮
         btnUseGps.setOnClickListener(v -> {
@@ -1018,6 +1134,36 @@ public class AddBillActivity extends AppCompatActivity {
                 return;
             }
         }
+        if (!locationPickedFromSuggestion) {
+            etLocation.setError("请从下拉列表选择一个关联地址");
+            new AlertDialog.Builder(this)
+                    .setTitle("请选择关联地址")
+                    .setMessage("为了确保位置与分类准确，请从下拉建议中选择一个地址，而不是只输入文本。")
+                    .setPositiveButton("知道了", (d, w) -> {
+                        etLocation.requestFocus();
+                        etLocation.showDropDown();
+                    })
+                    .show();
+            return;
+        }
+
+        // 规则：如果看起来像完整地址（含逗号/街道号），但用户没有从候选选择，就强制提醒
+        String addrTxt = etLocation.getText().toString().trim();
+        boolean looksLikeFullAddress =
+                addrTxt.matches(".*\\d+.*\\s+.*") // 有门牌 + 空格（粗判）
+                        || addrTxt.contains(",");           // 或包含逗号（像“街道, 城市”）
+        if (!locationPickedFromSuggestion && looksLikeFullAddress) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Pick from suggestions")
+                    .setMessage("Please pick a matched address from the dropdown so we can geo-locate and categorize it correctly.")
+                    .setPositiveButton("OK", (d,w) -> {
+                        etLocation.requestFocus();
+                        etLocation.post(etLocation::showDropDown);
+                    })
+                    .show();
+            return; // 阻止创建
+        }
+
 
         final String address = etLocation.getText().toString().trim();
 
@@ -1121,6 +1267,254 @@ public class AddBillActivity extends AppCompatActivity {
         });
     }
 
+    /** OSM 自动补全（附近 + 关键词），把经纬度作为“placeId”返回 */
+    /** OSM 自动补全（附近 + 关键词）：带三档范围、429重试、详尽日志、强制弹出下拉 */
+    /** OSM 自动补全（附近 + 关键词）：
+     *  - 纯数字：自动附加本地上下文（suburb→city→state），若仍无则不加bounded兜底
+     *  - 带国家码 countrycodes
+     *  - 三档范围 + 429 限流重试 + 关键日志 + 强制下拉
+     */
+    /** OSM 自动补全（附近 + 关键词）：
+     *  - 纯数字输入会自动附加本地上下文（suburb→city→state→Melbourne）
+     *  - 带 countrycodes=AU
+     *  - 三档范围 + 429 限流重试 + 强制下拉
+     */
+    /** OSM 自动补全（附近 + 关键词）：三档范围、429重试、竞态防护、强制弹出 */
+    /** OSM 自动补全（附近 + 关键词）：三档范围、429重试、竞态防护、窗口附着检查、强制弹出 */
+    /** OSM 自动补全（附近 + 关键词）：分步 bounded→unbounded、429 重试、去重与就近排序、强制显示下拉 */
+    private void queryAutocompleteOSM(String query) {
+        // 本次查询的代次（用于丢弃旧回调）
+        final int myGen = ++osmGen;
+
+        // 基准坐标：优先当前 Activity 已获坐标，其次 HomeActivity 传入的 lastKnown，再次墨尔本
+        final double baseLat = (latitude != 0) ? latitude
+                : (!Double.isNaN(lastKnownLat) ? lastKnownLat : -37.8136);
+        final double baseLon = (longitude != 0) ? longitude
+                : (!Double.isNaN(lastKnownLon) ? lastKnownLon : 144.9631);
+
+        android.util.Log.d("OSM-BASE", "baseLat=" + baseLat + ", baseLon=" + baseLon
+                + ", latitude=" + latitude + ", longitude=" + longitude
+                + ", lastKnownLat=" + lastKnownLat + ", lastKnownLon=" + lastKnownLon);
+
+        // 三档搜索半径（度）：约 8km / 20km / 50km
+        final double[] DELTAS = new double[]{0.08, 0.18, 0.45};
+
+        try {
+            final String q = java.net.URLEncoder.encode(query, "UTF-8");
+
+            // 逐步扩大范围；最后一次去掉 bounded
+            java.util.function.BiConsumer<Boolean, Integer> searchStep =
+                    new java.util.function.BiConsumer<Boolean, Integer>() {
+                        @Override public void accept(Boolean noBounded, Integer step) {
+                            // 查询已被新一轮覆盖，直接丢弃
+                            if (myGen != osmGen) return;
+
+                            int s = Math.max(0, Math.min(step, DELTAS.length - 1));
+                            double delta = DELTAS[s];
+                            double minLat = baseLat - delta, maxLat = baseLat + delta;
+                            double minLon = baseLon - delta, maxLon = baseLon + delta;
+
+                            String url = "https://nominatim.openstreetmap.org/search?"
+                                    + "format=json&addressdetails=1&limit=10"
+                                    + "&q=" + q;
+
+                            if (!noBounded) {
+                                url += "&bounded=1"
+                                        + "&viewbox=" + minLon + "," + maxLat + "," + maxLon + "," + minLat;
+                            }
+
+                            android.util.Log.d("OSM-REQ", (noBounded ? "[noBounded]" : "[bounded step="+s+"]")
+                                    + " URL=" + url);
+
+                            Request request = new Request.Builder()
+                                    .url(url)
+                                    .header("User-Agent", "EqualTrip/1.0 (contact: dev@example.com)")
+                                    .build();
+
+                            http.newCall(request).enqueue(new Callback() {
+                                @Override public void onFailure(Call call, IOException e) {
+                                    runOnUiThread(() -> {
+                                        if (myGen != osmGen) return;
+                                        android.util.Log.d("OSM-RESP", "FAIL: " + e.getMessage());
+                                    });
+                                }
+
+                                @Override public void onResponse(Call call, Response response) throws IOException {
+                                    try {
+                                        int code = response.code();
+                                        String ra = response.header("Retry-After");
+                                        String body = (response.body() != null) ? response.body().string() : "[]";
+                                        android.util.Log.d("OSM-RESP", "HTTP " + code + " Retry-After=" + ra);
+
+                                        // 429 限流：尊重 Retry-After
+                                        if (code == 429) {
+                                            long delay = 1500L;
+                                            if (ra != null) {
+                                                try { delay = Math.max(1000L, Long.parseLong(ra.trim()) * 1000L); } catch (Exception ignored) {}
+                                            }
+                                            long finalDelay = delay;
+                                            new Handler(getMainLooper()).postDelayed(() -> {
+                                                if (myGen != osmGen) return;
+                                                accept(noBounded, s);  // 同参数重试
+                                            }, finalDelay);
+                                            return;
+                                        }
+
+                                        if (!response.isSuccessful()) {
+                                            // 非 2xx：不动 UI（避免清空新结果）
+                                            return;
+                                        }
+
+                                        org.json.JSONArray arr = new org.json.JSONArray(body);
+                                        android.util.Log.d("OSM-RESP", "Results=" + arr.length()
+                                                + " (noBounded=" + noBounded + ", step=" + s + ")");
+
+                                        // 0 结果：扩大范围；若已经最大且仍 bounded，则改为不加 bounded；若已不加 bounded 仍 0，才清空
+                                        if (arr.length() == 0) {
+                                            if (myGen != osmGen) return;
+
+                                            if (!noBounded && s + 1 < DELTAS.length) {
+                                                accept(false, s + 1);           // 扩大范围继续找
+                                            } else if (!noBounded) {
+                                                accept(true, s);                // 去掉 bounded 再试一次
+                                            } else {
+                                                // 最终仍为 0：清空 UI
+                                                runOnUiThread(() -> {
+                                                    if (myGen != osmGen) return;
+                                                    android.util.Log.d("OSM-UI", "final empty, clear dropdown");
+                                                    suggestions.clear();
+                                                    suggestionPlaceIds.clear();
+                                                    if (addrAdapter != null) addrAdapter.notifyDataSetChanged();
+                                                    etLocation.dismissDropDown();
+                                                });
+                                            }
+                                            return;
+                                        }
+
+                                        // —— 解析 → 去重 → 距离过滤与排序 —— //
+                                        class Item {
+                                            String display;
+                                            double lat, lon;
+                                            double distKm;
+                                            boolean exactHouseMatch;
+                                            boolean prefixHouseMatch;
+                                        }
+                                        java.util.List<Item> items = new java.util.ArrayList<>();
+                                        java.util.Set<String> seen = new java.util.HashSet<>(); // 去重 key: lat,lon
+
+                                        for (int i = 0; i < arr.length(); i++) {
+                                            org.json.JSONObject o = arr.getJSONObject(i);
+                                            String display = o.optString("display_name", "");
+                                            String latStr = o.optString("lat", "");
+                                            String lonStr = o.optString("lon", "");
+                                            if (display.isEmpty() || latStr.isEmpty() || lonStr.isEmpty()) continue;
+
+                                            double latV, lonV;
+                                            try {
+                                                latV = Double.parseDouble(latStr);
+                                                lonV = Double.parseDouble(lonStr);
+                                            } catch (Exception e) { continue; }
+
+                                            String key = latStr + "," + lonStr;
+                                            if (!seen.add(key)) continue; // 去重
+
+                                            Item it = new Item();
+                                            it.display = display;
+                                            it.lat = latV;
+                                            it.lon = lonV;
+
+                                            // 用基准坐标算距离
+                                            it.distKm = haversineKm(baseLat, baseLon, latV, lonV);
+
+                                            // 数字门牌优先
+                                            if (query.matches("\\d+")) {
+                                                org.json.JSONObject addr = o.optJSONObject("address");
+                                                String house = (addr != null) ? addr.optString("house_number", "") : "";
+                                                it.exactHouseMatch  = house.equals(query);
+                                                it.prefixHouseMatch = !it.exactHouseMatch && house.startsWith(query);
+                                            }
+                                            items.add(it);
+                                        }
+
+                                        // 距离上限（去噪）：noBounded 时 50km；bounded 时 30km
+                                        double maxKm = noBounded ? 50.0 : 30.0;
+                                        java.util.List<Item> filtered = new java.util.ArrayList<>();
+                                        for (Item it : items) {
+                                            if (Double.isNaN(it.distKm) || it.distKm <= maxKm) filtered.add(it);
+                                        }
+
+                                        // 排序：精确门牌 > 前缀门牌 > 距离近 > 文本
+                                        java.util.Collections.sort(filtered, (a, b) -> {
+                                            if (a.exactHouseMatch != b.exactHouseMatch) return a.exactHouseMatch ? -1 : 1;
+                                            if (a.prefixHouseMatch != b.prefixHouseMatch) return a.prefixHouseMatch ? -1 : 1;
+                                            int d = Double.compare(a.distKm, b.distKm);
+                                            if (d != 0) return d;
+                                            return a.display.compareToIgnoreCase(b.display);
+                                        });
+
+                                        // 输出到 UI 的数组（如不想显示距离，去掉 " · ~Xkm" 拼接）
+                                        java.util.List<String> texts = new java.util.ArrayList<>();
+                                        java.util.List<String> ids   = new java.util.ArrayList<>();
+                                        for (Item it : filtered) {
+                                            texts.add(it.display + "  ·  ~" + (int)Math.round(it.distKm) + "km");
+                                            ids.add(it.lat + "," + it.lon);
+                                        }
+
+                                        runOnUiThread(() -> {
+                                            if (myGen != osmGen) return;
+
+                                            suggestions.clear();
+                                            suggestionPlaceIds.clear();
+                                            suggestions.addAll(texts);
+                                            suggestionPlaceIds.addAll(ids);
+
+                                            // 重新挂一次 adapter（兼容部分机型）
+                                            addrAdapter = new ArrayAdapter<>(AddBillActivity.this,
+                                                    android.R.layout.simple_dropdown_item_1line, suggestions);
+                                            etLocation.setAdapter(addrAdapter);
+                                            etLocation.setThreshold(0); // 立刻可弹
+
+                                            boolean focused = etLocation.isFocused();
+                                            android.util.Log.d("OSM-UI", "update size=" + suggestions.size() + ", focused=" + focused);
+
+                                            if (!focused) etLocation.requestFocus();
+                                            etLocation.dismissDropDown();
+                                            etLocation.post(etLocation::showDropDown);
+                                            etLocation.postDelayed(etLocation::showDropDown, 60);
+                                            etLocation.postDelayed(() -> {
+                                                etLocation.showDropDown();
+                                                android.util.Log.d("OSM-UI", "popupShowing=" + etLocation.isPopupShowing());
+                                            }, 140);
+                                        });
+
+                                    } catch (Exception parseEx) {
+                                        android.util.Log.d("OSM-RESP", "parse error: " + parseEx.getMessage());
+                                        // 解析异常：不动 UI（避免覆盖新结果）
+                                    } finally {
+                                        response.close();
+                                    }
+                                }
+                            });
+                        }
+                    };
+
+            // 从最小范围开始检索
+            searchStep.accept(false, 0);
+
+        } catch (Exception encEx) {
+            android.util.Log.d("OSM-REQ", "encode error: " + encEx.getMessage());
+            // 构造 URL 出错：不动 UI
+        }
+    }
+
+
+
+
+
+
+
+
+
     private void fetchCategoryFromNominatimDebounced(double lat, double lon, Runnable after) {
         long now = System.currentTimeMillis();
         long since = now - lastNominatimCallMs;
@@ -1140,6 +1534,19 @@ public class AddBillActivity extends AppCompatActivity {
         }
         fetchCategoryFromNominatimInternal(lat, lon, after);
     }
+
+    /** 计算两点球面距离（千米） */
+    private static double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+        double R = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat/2)*Math.sin(dLat/2)
+                + Math.cos(Math.toRadians(lat1))*Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon/2)*Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
 
     /** 反向地理编码（Nominatim） */
     private void fetchCategoryFromNominatimInternal(double lat, double lon, Runnable after) {
@@ -1716,6 +2123,11 @@ public class AddBillActivity extends AppCompatActivity {
                     if (addr == null) addr = "";
                     etLocation.setText(addr);
                     etLocation.setSelection(addr.length());
+                    if (latLng != null) {
+                        fetchCategoryFromNominatimDebounced(latitude, longitude, null);
+                        categoryLocked = true; // 避免后续误改
+                    }
+                    locationPickedFromSuggestion = true;
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Failed to fetch place detail", Toast.LENGTH_SHORT).show());
     }
@@ -1867,6 +2279,8 @@ public class AddBillActivity extends AppCompatActivity {
     private final LocationListener dummyListener = new LocationListener() {
         @Override public void onLocationChanged(@NonNull Location location) {}
     };
+
+    /** 无计费：OSM 自动补全（附近 + 关键词），把经纬度作为“placeId”返回 */
 
     private void reverseGeocodeAndFill(double lat, double lon) {
         // 优先用系统 Geocoder

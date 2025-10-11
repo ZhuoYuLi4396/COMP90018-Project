@@ -17,6 +17,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -70,6 +72,11 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     // markers 合并容器：docPath -> LatLng/Title
     private final Map<String, LatLng> currentMarkers = new HashMap<>();
     private final Map<String, String> currentTitles  = new HashMap<>();
+
+    // Fused 定位
+    private FusedLocationProviderClient fusedClient;
+    private Double currentLat = null, currentLon = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -225,6 +232,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         gmap = map;
         mapReady = true;
 
+        fusedClient = LocationServices.getFusedLocationProviderClient(this);
+
         gmap.getUiSettings().setZoomControlsEnabled(true);
         gmap.getUiSettings().setCompassEnabled(true);
         gmap.getUiSettings().setMapToolbarEnabled(false);
@@ -242,14 +251,30 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             try { if (gmap != null) gmap.setMyLocationEnabled(true); } catch (SecurityException ignore) {}
+
+            // ← 新增：取一次 lastLocation 作为基准（不弹权限框）
+            fusedClient.getLastLocation().addOnSuccessListener(loc -> {
+                if (loc != null) {
+                    currentLat = loc.getLatitude();
+                    currentLon = loc.getLongitude();
+                    // 同时存一份到 SharedPreferences，防止后续 Activity 启动时没有 extras
+                    getSharedPreferences("baseline_loc", MODE_PRIVATE)
+                            .edit()
+                            .putString("lat", String.valueOf(currentLat))
+                            .putString("lon", String.valueOf(currentLon))
+                            .apply();
+                }
+            });
+
         } else {
             ActivityCompat.requestPermissions(
                     this,
-                    new String[]{ Manifest.permission.ACCESS_FINE_LOCATION }, // ← 只要 FINE
+                    new String[]{ Manifest.permission.ACCESS_FINE_LOCATION },
                     RC_LOCATION
             );
         }
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] perms, @NonNull int[] results) {
@@ -263,10 +288,26 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (fineGranted || coarseGranted) {
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     try { if (gmap != null) gmap.setMyLocationEnabled(true); } catch (SecurityException ignore) {}
+
+                    // ✅ 新增：权限刚授予时，也取一次 lastLocation 并缓存，确保后面能带到 AddBillActivity
+                    if (fusedClient != null) {
+                        fusedClient.getLastLocation().addOnSuccessListener(loc -> {
+                            if (loc != null) {
+                                currentLat = loc.getLatitude();
+                                currentLon = loc.getLongitude();
+                                getSharedPreferences("baseline_loc", MODE_PRIVATE)
+                                        .edit()
+                                        .putString("lat", String.valueOf(currentLat))
+                                        .putString("lon", String.valueOf(currentLon))
+                                        .apply();
+                            }
+                        });
+                    }
                 }, 300);
             } else {
                 Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
             }
+
         }
     }
     private void enableMyLocationIfGranted() {
@@ -289,6 +330,24 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             );
         }
     }
+
+    /** 将首页的个人坐标塞进 Intent：优先用当前内存的 currentLat/Lon，其次用 SharedPreferences 兜底 */
+    private void putBaselineExtras(Intent i) {
+        if (currentLat != null && currentLon != null) {
+            i.putExtra("base_lat", currentLat);
+            i.putExtra("base_lon", currentLon);
+            return;
+        }
+        String plat = getSharedPreferences("baseline_loc", MODE_PRIVATE).getString("lat", null);
+        String plon = getSharedPreferences("baseline_loc", MODE_PRIVATE).getString("lon", null);
+        if (plat != null && plon != null) {
+            try {
+                i.putExtra("base_lat", Double.parseDouble(plat));
+                i.putExtra("base_lon", Double.parseDouble(plon));
+            } catch (Exception ignored) {}
+        }
+    }
+
 
     @android.annotation.SuppressLint("MissingPermission")
     private void actuallyEnableMyLocation() {
@@ -498,6 +557,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (activeTripId != null && !activeTripId.trim().isEmpty()) {
             Intent i = new Intent(this, AddBillActivity.class);
             i.putExtra("tripId", activeTripId);
+            putBaselineExtras(i); // ★ 带上个人坐标
             startActivity(i);
             return;
         }
@@ -505,12 +565,14 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (newId != null && !newId.trim().isEmpty()) {
                 Intent i = new Intent(this, AddBillActivity.class);
                 i.putExtra("tripId", newId);
+                putBaselineExtras(i); // ★ 带上个人坐标
                 startActivity(i);
             } else {
                 Toast.makeText(this, "No recent trip found. Create or open a trip first.", Toast.LENGTH_SHORT).show();
             }
         });
     }
+
 
     private void fetchLatestTripIdOnce(SimpleCallback<String> cb) {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();

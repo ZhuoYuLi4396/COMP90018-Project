@@ -3,7 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
 
-
     <!-- 声明 BLE 能力；如果想允许非 BLE 设备也能安装，把 required 改为 false -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
