@@ -64,7 +64,7 @@ public class ProfileActivity extends AppCompatActivity {
         swCamera        = findViewById(R.id.swCamera);
         tvCurrencyValue = findViewById(R.id.tvCurrencyValue);
         LinearLayout rowCurrency = findViewById(R.id.rowCurrency);
-        bottom = findViewById(R.id.bottomNav);   // 和 XML 一致的 id
+        bottom = findViewById(R.id.bottom_nav);   // 和 XML 一致的 id
 
         tvProfileName  = findViewById(R.id.tvProfileName);
         tvProfileEmail = findViewById(R.id.tvProfileEmail);
