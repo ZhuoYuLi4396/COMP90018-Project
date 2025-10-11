@@ -29,7 +29,10 @@
     <string name="notifications">Notifications</string>
 
     <!-- Google Maps -->
-    <string name="google_maps_key">AIzaSyCfJ_YbwTaRgHOMWwFwqAPMiJw9ArRad2o</string>
+    <string name="google_maps_key">AIzaSyC8cIrb6Lkca5A2rkcD-CB3o76xqLfQ3L8</string>
+    <string name="PLACES_API_KEY">AIzaSyC8cIrb6Lkca5A2rkcD-CB3o76xqLfQ3L8</string>
+
+
 
     <!-- Bottom Nav / Trip Page -->
     <string name="home">Home</string>

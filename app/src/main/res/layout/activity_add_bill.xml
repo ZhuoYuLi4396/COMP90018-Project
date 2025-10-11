@@ -100,26 +100,41 @@
                 android:background="@drawable/rounded_edittext_bg"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
                 android:layout_marginBottom="16dp">
 
                 <ImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:src="@drawable/ic_location"
+                    android:contentDescription="@string/app_name"
                     app:tint="#666666" />
 
-                <EditText
+                <AutoCompleteTextView
                     android:id="@+id/et_location"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
                     android:background="@android:color/transparent"
-                    android:hint="362 Little Bourke St"
-                    android:paddingStart="12dp"
-                    android:textSize="16sp" />
+                    android:hint="Start typing e.g. 462 ..."
+                    android:completionThreshold="1"
+                    android:inputType="textPostalAddress"
+                    android:dropDownVerticalOffset="4dp"
+                    android:dropDownHeight="wrap_content"
+                    android:dropDownWidth="match_parent"/>
+
+                <ImageButton
+                    android:id="@+id/btn_use_gps"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_my_location"
+                    android:contentDescription="Use current location"/>
             </LinearLayout>
+
 
             <!-- Category -->
             <TextView
@@ -336,13 +351,13 @@
                     android:padding="12dp"
                     android:visibility="gone">
 
-<!--                    <ImageView-->
-<!--                        android:id="@+id/iv_receipt_preview"-->
-<!--                        android:layout_width="80dp"-->
-<!--                        android:layout_height="match_parent"-->
-<!--                        android:layout_alignParentStart="true"-->
-<!--                        android:background="#E0E0E0"-->
-<!--                        android:scaleType="centerCrop" />-->
+                    <!--                    <ImageView-->
+                    <!--                        android:id="@+id/iv_receipt_preview"-->
+                    <!--                        android:layout_width="80dp"-->
+                    <!--                        android:layout_height="match_parent"-->
+                    <!--                        android:layout_alignParentStart="true"-->
+                    <!--                        android:background="#E0E0E0"-->
+                    <!--                        android:scaleType="centerCrop" />-->
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/rv_receipts"
                         android:layout_width="match_parent"
