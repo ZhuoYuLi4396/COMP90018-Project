@@ -340,14 +340,6 @@ public class AddBillActivity extends AppCompatActivity {
         addrAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, suggestions);
         etLocation.setAdapter(addrAdapter);
         etLocation.setThreshold(1);
-// === 启动实网探测：自动搜一次“462”（确认方法被调用）===
-        etLocation.postDelayed(() -> {
-            String probe = "462";
-            etLocation.setText(probe);
-            etLocation.setSelection(probe.length());
-            Log.d("OSM-PROBE", "Trigger probe query");
-            queryAutocompleteOSM(probe);
-        }, 800);
 
 
 
