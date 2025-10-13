@@ -35,6 +35,7 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.DocumentReference;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -76,7 +77,9 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     // Fused 定位
     private FusedLocationProviderClient fusedClient;
     private Double currentLat = null, currentLon = null;
+    private TextView tvCurrentTripId;
 
+    @Nullable private ListenerRegistration userProfileReg = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,8 +88,10 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // 顶部文案
         tvUsername        = findViewById(R.id.tvUsername);
-        tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
-        tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
+        //tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
+        //tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
+        tvCurrentTripId   = findViewById(R.id.tvCurrentTripId);
+        if (tvCurrentTripId != null) tvCurrentTripId.setText("");
 
         // Firebase
         mAuth = FirebaseAuth.getInstance();
@@ -100,8 +105,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         // 顶部示例文案
-        tvOngoingTripsNum.setText(" 2 ");
-        tvUnpaidBillsNum.setText("6 ");
+        //tvOngoingTripsNum.setText(" 2 ");
+        //tvUnpaidBillsNum.setText("6 ");
         String name = currentUser.getDisplayName();
         if (name == null || name.isEmpty()) {
             String email = currentUser.getEmail();
@@ -177,13 +182,14 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onStart() {
         super.onStart();
-        // 回到首页时，开始监听“我最新的 trip”，并据此附着 bills 监听
+        attachUserProfileListener();
         startWatchingLatestTrip();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        detachUserProfileListener();
         stopWatchingLatestTrip();
     }
 
@@ -368,7 +374,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
             if (granted) {
-                // 🔹 权限刚被允许，稍微延迟一下再开启地图定位（确保系统写入完成）
                 new android.os.Handler().postDelayed(this::actuallyEnableMyLocation, 300);
             } else {
                 Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
@@ -386,11 +391,11 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         final String myUid = user.getUid();
         final String myEmailLower = (user.getEmail() == null) ? "" : user.getEmail().toLowerCase(Locale.ROOT);
 
-        // 先解绑旧的“最新 trip”监听，避免重复
+
         if (latestOwnerReg != null) { latestOwnerReg.remove(); latestOwnerReg = null; }
         if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
 
-        // owner 最新 1 条
+
         latestOwnerReg = db.collection("trips")
                 .whereEqualTo("ownerId", myUid)
                 .orderBy("createdAtClient", Query.Direction.DESCENDING)
@@ -431,8 +436,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (latestOwnerReg != null) { latestOwnerReg.remove(); latestOwnerReg = null; }
         if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
         detachBillsListener();
-        // ★ 关键修复：清空 activeTripId，保证回到首页会强制重挂 bills 监听
         activeTripId = null;
+        if (tvCurrentTripId != null) tvCurrentTripId.setText("");
     }
 
     private void detachBillsListener() {
@@ -452,10 +457,14 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         boolean sameTrip = (activeTripId != null && activeTripId.equals(newId));
         // 若 trip 相同且监听还在，直接返回；否则强制重挂
         if (sameTrip && billsRegTrip != null) {
+            if (tvCurrentTripId != null) tvCurrentTripId.setText(activeTripId != null ? activeTripId : "");
             return;
         }
 
         activeTripId = newId;
+        if (tvCurrentTripId != null) {
+            tvCurrentTripId.setText(activeTripId != null ? activeTripId : "");
+        }
         attachBillsListenerForTrip(activeTripId);
     }
 
@@ -623,6 +632,64 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 });
     }
+
+    private void attachUserProfileListener() {
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        if (u == null) return;
+
+        // 先卸载旧监听，避免重复
+        if (userProfileReg != null) { userProfileReg.remove(); userProfileReg = null; }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        DocumentReference docById = db.collection("users").document(u.getUid());
+
+        // 先尝试按 docId = uid 监听
+        docById.get().addOnSuccessListener(snap -> {
+            if (snap != null && snap.exists()) {
+                userProfileReg = docById.addSnapshotListener(this, (ds, e) -> {
+                    if (e != null || ds == null || !ds.exists()) return;
+                    String name = ds.getString("userId");
+                    if (name == null || name.trim().isEmpty()) {
+                        // 兜底：Auth 显示名或邮箱前缀
+                        name = (u.getDisplayName() != null && !u.getDisplayName().isEmpty())
+                                ? u.getDisplayName()
+                                : (u.getEmail() != null && u.getEmail().contains("@")
+                                ? u.getEmail().substring(0, u.getEmail().indexOf('@'))
+                                : "User");
+                    }
+                    if (tvUsername != null) tvUsername.setText(name);
+                });
+            } else {
+                // 若 docId 不是 uid，则回退用 where uid == <auth uid> 再监听
+                db.collection("users")
+                        .whereEqualTo("uid", u.getUid())
+                        .limit(1)
+                        .get()
+                        .addOnSuccessListener(qs -> {
+                            if (!qs.isEmpty()) {
+                                DocumentReference realDoc = qs.getDocuments().get(0).getReference();
+                                userProfileReg = realDoc.addSnapshotListener(this, (ds, e) -> {
+                                    if (e != null || ds == null || !ds.exists()) return;
+                                    String name = ds.getString("userId");
+                                    if (name == null || name.trim().isEmpty()) {
+                                        name = (u.getDisplayName() != null && !u.getDisplayName().isEmpty())
+                                                ? u.getDisplayName()
+                                                : (u.getEmail() != null && u.getEmail().contains("@")
+                                                ? u.getEmail().substring(0, u.getEmail().indexOf('@'))
+                                                : "User");
+                                    }
+                                    if (tvUsername != null) tvUsername.setText(name);
+                                });
+                            }
+                        });
+            }
+        });
+    }
+
+    private void detachUserProfileListener() {
+        if (userProfileReg != null) { userProfileReg.remove(); userProfileReg = null; }
+    }
+
 
     @Nullable
     private Trip pickLatest(@Nullable Trip owner, @Nullable Trip invited) {
