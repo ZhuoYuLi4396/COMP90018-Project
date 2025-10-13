@@ -437,7 +437,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
         detachBillsListener();
         activeTripId = null;
-        if (tvCurrentTripId != null) tvCurrentTripId.setText("");
+        if (tvCurrentTripId != null) tvCurrentTripId.setText("--"); // 保留
     }
 
     private void detachBillsListener() {
@@ -457,14 +457,12 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         boolean sameTrip = (activeTripId != null && activeTripId.equals(newId));
         // 若 trip 相同且监听还在，直接返回；否则强制重挂
         if (sameTrip && billsRegTrip != null) {
-            if (tvCurrentTripId != null) tvCurrentTripId.setText(activeTripId != null ? activeTripId : "");
+            updateCurrentTripDisplay(activeTripId);
             return;
         }
 
         activeTripId = newId;
-        if (tvCurrentTripId != null) {
-            tvCurrentTripId.setText(activeTripId != null ? activeTripId : "");
-        }
+        updateCurrentTripDisplay(activeTripId);
         attachBillsListenerForTrip(activeTripId);
     }
 
@@ -631,6 +629,34 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                         cb.onResult(pick == null ? null : pick.id);
                     }
                 });
+    }
+
+
+    /** 用 tripId 读取一次 trips/{id} ，把“Current trip ID”改为显示 trip name（无则回退到 id） */
+    private void updateCurrentTripDisplay(@Nullable String tripId) {
+        if (tvCurrentTripId == null) return;
+
+        if (tripId == null || tripId.trim().isEmpty()) {
+            tvCurrentTripId.setText("--");
+            return;
+        }
+
+        // 读取 trips/{tripId} 拿到 name
+        db.collection("trips").document(tripId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    String display = null;
+                    if (doc != null && doc.exists()) {
+                        // 常见命名都兜一下
+                        display = doc.getString("tripName");
+                        if (display == null || display.trim().isEmpty()) display = doc.getString("name");
+                        if (display == null || display.trim().isEmpty()) display = doc.getString("title");
+                    }
+                    tvCurrentTripId.setText(
+                            (display != null && !display.trim().isEmpty()) ? display : tripId
+                    );
+                })
+                .addOnFailureListener(e -> tvCurrentTripId.setText(tripId));
     }
 
     private void attachUserProfileListener() {
