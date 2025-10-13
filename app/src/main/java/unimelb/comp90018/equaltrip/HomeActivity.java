@@ -76,7 +76,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     // Fused 定位
     private FusedLocationProviderClient fusedClient;
     private Double currentLat = null, currentLon = null;
-
+    private TextView tvCurrentTripId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,8 +85,10 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // 顶部文案
         tvUsername        = findViewById(R.id.tvUsername);
-        tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
-        tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
+        //tvOngoingTripsNum = findViewById(R.id.tvOngoingTripsNum);
+        //tvUnpaidBillsNum  = findViewById(R.id.tvUnpaidBillsNum);
+        tvCurrentTripId   = findViewById(R.id.tvCurrentTripId);
+        if (tvCurrentTripId != null) tvCurrentTripId.setText("");
 
         // Firebase
         mAuth = FirebaseAuth.getInstance();
@@ -100,8 +102,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         // 顶部示例文案
-        tvOngoingTripsNum.setText(" 2 ");
-        tvUnpaidBillsNum.setText("6 ");
+        //tvOngoingTripsNum.setText(" 2 ");
+        //tvUnpaidBillsNum.setText("6 ");
         String name = currentUser.getDisplayName();
         if (name == null || name.isEmpty()) {
             String email = currentUser.getEmail();
@@ -368,7 +370,6 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
             if (granted) {
-                // 🔹 权限刚被允许，稍微延迟一下再开启地图定位（确保系统写入完成）
                 new android.os.Handler().postDelayed(this::actuallyEnableMyLocation, 300);
             } else {
                 Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
@@ -386,11 +387,11 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         final String myUid = user.getUid();
         final String myEmailLower = (user.getEmail() == null) ? "" : user.getEmail().toLowerCase(Locale.ROOT);
 
-        // 先解绑旧的“最新 trip”监听，避免重复
+
         if (latestOwnerReg != null) { latestOwnerReg.remove(); latestOwnerReg = null; }
         if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
 
-        // owner 最新 1 条
+
         latestOwnerReg = db.collection("trips")
                 .whereEqualTo("ownerId", myUid)
                 .orderBy("createdAtClient", Query.Direction.DESCENDING)
@@ -431,8 +432,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (latestOwnerReg != null) { latestOwnerReg.remove(); latestOwnerReg = null; }
         if (latestInvitedReg != null) { latestInvitedReg.remove(); latestInvitedReg = null; }
         detachBillsListener();
-        // ★ 关键修复：清空 activeTripId，保证回到首页会强制重挂 bills 监听
         activeTripId = null;
+        if (tvCurrentTripId != null) tvCurrentTripId.setText("");
     }
 
     private void detachBillsListener() {
@@ -452,10 +453,14 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         boolean sameTrip = (activeTripId != null && activeTripId.equals(newId));
         // 若 trip 相同且监听还在，直接返回；否则强制重挂
         if (sameTrip && billsRegTrip != null) {
+            if (tvCurrentTripId != null) tvCurrentTripId.setText(activeTripId != null ? activeTripId : "");
             return;
         }
 
         activeTripId = newId;
+        if (tvCurrentTripId != null) {
+            tvCurrentTripId.setText(activeTripId != null ? activeTripId : "");
+        }
         attachBillsListenerForTrip(activeTripId);
     }
 
