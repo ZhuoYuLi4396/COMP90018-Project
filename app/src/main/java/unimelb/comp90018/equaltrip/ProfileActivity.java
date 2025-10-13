@@ -86,7 +86,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         findViewById(R.id.btnLogout).setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();
-            Intent i = new Intent(ProfileActivity.this, SignUpActivity.class);
+            Intent i = new Intent(ProfileActivity.this, SignInActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(i);
         });
