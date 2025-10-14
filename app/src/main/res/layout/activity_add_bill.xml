@@ -296,8 +296,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:paddingStart="12dp"
-                    android:text="2025-08-05"
-                    android:textColor="#333333"
+                    android:text="Tap to select date"
+                    android:textColor="@color/text_secondary"
                     android:textSize="16sp" />
             </LinearLayout>
 
