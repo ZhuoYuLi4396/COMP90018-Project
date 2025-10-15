@@ -29,32 +29,18 @@
         app:titleTextColor="@color/link_blue" />
 
     <ImageView
-        android:id="@+id/iv_bell"
+        android:id="@+id/iv_bluetooth"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:layout_marginEnd="@dimen/field_horizontal_margin"
         android:contentDescription="@string/notifications"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_notifications_24"
+        android:src="@drawable/ic_bluetooth_24"
         android:translationY="15dp"
         app:layout_constraintBottom_toBottomOf="@id/head_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/head_bar" />
 
-    <ImageView
-        android:id="@+id/iv_bluetooth"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginEnd="12dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Bluetooth"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_bluetooth_24"
-        android:translationY="15dp"
-        app:layout_constraintBottom_toBottomOf="@id/head_bar"
-        app:layout_constraintEnd_toStartOf="@id/iv_bell"
-        app:layout_constraintTop_toTopOf="@id/head_bar"
-        app:tint="@color/text_secondary" />
 
     <!-- 搜索框（已去掉右侧 Filter 图标） -->
     <com.google.android.material.textfield.TextInputLayout
@@ -97,7 +83,7 @@
         android:paddingStart="@dimen/field_horizontal_margin"
         android:paddingTop="16dp"
         android:paddingEnd="@dimen/field_horizontal_margin"
-        android:paddingBottom="152dp"
+        android:paddingBottom="16dp"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

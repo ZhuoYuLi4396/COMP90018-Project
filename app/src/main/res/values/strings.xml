@@ -44,8 +44,11 @@
     <string name="filter">Filter</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
 
-    <!-- Trip 创建入口 -->
-    <string name="add_trip">Add new trip</string>
+    <!-- Trip & bill 创建入口 -->
+    <string name="add_trip">New trip</string>
+    <string name="add_bill">Add Bill</string>
+
+
 
     <!-- Add Trip 表单 -->
     <string name="add_trip_title">Add Trip</string>
