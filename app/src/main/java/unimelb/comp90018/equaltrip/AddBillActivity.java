@@ -215,6 +215,7 @@ public class AddBillActivity extends AppCompatActivity {
     // This createBill() keep call the void to execute search category and auto-fill
     // write boolean to avoid search again.
     private boolean categoryLocked = false;
+    private boolean isAmountValid = true;
 
     // 位置权限（一次性多权限）
     private final ActivityResultLauncher<String[]> requestLocationPerms =
@@ -609,12 +610,34 @@ public class AddBillActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
+                String input = s.toString().trim();
+                // 验证小数位数
+                if (!validateAmountDecimalPlaces(input)) {
+                    etAmount.setError("Maximum 2 decimal places allowed");
+                    isAmountValid = false;
+                    btnCreateBill.setEnabled(false);
+                    btnCreateBill.setAlpha(0.5f); // 视觉上显示禁用状态
+                    totalAmount = 0.0;
+                    updateSplitAmounts();
+                    return;
+                }
+
+                // 清除错误提示
+                etAmount.setError(null);
+                isAmountValid = true;
+                btnCreateBill.setEnabled(true);
+                btnCreateBill.setAlpha(1.0f);
+
                 if (!s.toString().isEmpty()) {
                     try {
                         totalAmount = Double.parseDouble(s.toString());
                         updateSplitAmounts();
                     } catch (NumberFormatException e) {
                         totalAmount = 0.0;
+                        etAmount.setError("Invalid amount format");
+                        isAmountValid = false;
+                        btnCreateBill.setEnabled(false);
+                        btnCreateBill.setAlpha(0.5f);
                     }
                 } else {
                     totalAmount = 0.0;
@@ -757,6 +780,25 @@ public class AddBillActivity extends AppCompatActivity {
                 break;
             }
         }
+    }
+
+    private boolean validateAmountDecimalPlaces(String amountStr) {
+        if (amountStr == null || amountStr.trim().isEmpty()) {
+            return true; // 空值由其他验证处理
+        }
+
+        // 检查是否包含小数点
+        if (amountStr.contains(".")) {
+            String[] parts = amountStr.split("\\.");
+            if (parts.length == 2) {
+                // 检查小数部分位数
+                String decimalPart = parts[1];
+                if (decimalPart.length() > 2) {
+                    return false; // 超过两位小数
+                }
+            }
+        }
+        return true;
     }
 
     private void updateTotalDisplay() {
@@ -1081,6 +1123,19 @@ public class AddBillActivity extends AppCompatActivity {
             return;
         }
 
+        if (!isAmountValid || !validateAmountDecimalPlaces(etAmount.getText().toString().trim())) {
+            etAmount.setError("Maximum 2 decimal places allowed");
+            Toast.makeText(this, "Amount can only have up to 2 decimal places", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 禁止输入负数，为0的amount
+        double value = Double.parseDouble(etAmount.getText().toString().trim());
+        if (value <= 0) {
+            Toast.makeText(this, "Amount must be greater than 0", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (selectedParticipantUids.isEmpty()) {
             Toast.makeText(this, "Please select participants", Toast.LENGTH_SHORT).show();
             return;
@@ -1102,7 +1157,7 @@ public class AddBillActivity extends AppCompatActivity {
         }
 
         // 禁止输入负数，为0的amount
-        double value = Double.parseDouble(etAmount.getText().toString().trim());
+//        double value = Double.parseDouble(etAmount.getText().toString().trim());
         if (value <= 0) {
             Toast.makeText(this, "Amount must be greater than 0", Toast.LENGTH_SHORT).show();
             return;
