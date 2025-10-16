@@ -276,6 +276,20 @@ public class AddBillActivity extends AppCompatActivity {
         tvOcrResult    = findViewById(R.id.tv_ocr_result);
         btnRetryOcr    = findViewById(R.id.btn_retry_ocr);
 
+        // 返回键失效修复
+        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v -> {
+                View fakeBack = findViewById(R.id.btn_back);
+                if (fakeBack != null) {
+                    fakeBack.performClick();
+                } else {
+                    finish();
+                }
+            });
+        }
+
+
         // === ML Kit Recognizers ===
         latinRecognizer   = TextRecognition.getClient(new TextRecognizerOptions.Builder().build());
         chineseRecognizer = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());

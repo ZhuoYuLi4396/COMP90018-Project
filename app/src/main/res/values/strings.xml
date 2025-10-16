@@ -69,7 +69,7 @@
 
     <string name="tripmates_label">Tripmates *</string>
     <string name="tripmates_add_via_bluetooth">Click to add tripmates via Bluetooth</string>
-    <string name="tripmates_add_by_email">Add by entering tripmate’s email</string>
+    <string name="tripmates_add_by_email">Add tripmates by email</string>
     <string name="tripmates_added_title">Tripmates added</string>
 
     <string name="create_trip">Create Trip</string>
