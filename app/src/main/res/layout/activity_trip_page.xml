@@ -56,6 +56,7 @@
         app:boxStrokeColor="@color/field_stroke"
         app:endIconMode="clear_text"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/head_bar"
         app:startIconDrawable="@drawable/ic_search"
@@ -71,7 +72,6 @@
             android:inputType="text" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- 底部导航 -->
     <include layout="@layout/include_bottom_nav"/>
 
     <!-- Trip 列表 -->

@@ -76,8 +76,9 @@
     <string name="avatar">avatar</string>
     <string name="remove">remove</string>
 
-    <!-- Trip 详情（测试/最小化） -->
+    <!-- 详情（测试/最小化） -->
     <string name="trip_detail">Trip Detail</string>
+    <string name="bill_detail">Bill Detail</string>
 
     <!-- 相机/列表操作等 -->
     <string name="delete">Delete</string>
