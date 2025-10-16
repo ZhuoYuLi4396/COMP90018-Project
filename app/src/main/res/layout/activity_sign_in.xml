@@ -141,7 +141,7 @@
             android:imeOptions="actionDone"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Remember me + Forgot password -->
+    <!-- Forgot password -->
     <LinearLayout
         android:id="@+id/llExtras"
         android:orientation="horizontal"
@@ -152,28 +152,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginStart="@dimen/field_horizontal_margin"
         android:layout_marginEnd="@dimen/field_horizontal_margin"
-        android:layout_marginTop="@dimen/terms_gap"
-        android:gravity="center_vertical">
-
-        <CheckBox
-            android:id="@+id/cbRemember"
-            android:layout_width="31dp"
-            android:layout_height="wrap_content" />
-
-        <TextView
-            android:id="@+id/tvRemember"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/remember_me"
-            android:textSize="15sp"
-            android:textAppearance="@style/TextAppearance.EqualTrip.Terms"
-            android:paddingStart="8dp"/>
-
-        <!-- 添加空白视图作为间隔 -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1"/>
+        android:gravity="end|center_vertical">
 
         <TextView
             android:id="@+id/tvForgot"
