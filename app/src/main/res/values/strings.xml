@@ -100,5 +100,7 @@
     <string name="ocr_preparing_model">Preparing recognition model...</string>
     <string name="ocr_woolworths_detected">Woolworths receipt detected</string>
 
+    <!-- add bill -->
+    <string name="confirm_selection">Confirm Participants</string>
 
 </resources>

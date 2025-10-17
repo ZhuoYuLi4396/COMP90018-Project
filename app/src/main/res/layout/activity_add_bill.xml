@@ -34,12 +34,6 @@
             app:contentInsetStartWithNavigation="0dp"
             app:popupTheme="@style/ThemeOverlay.Material3.Light" />
 
-        <!-- 占位的 back 按钮，给旧代码 findViewById -->
-        <ImageButton
-            android:id="@+id/btn_back"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:visibility="gone"/>
     </com.google.android.material.appbar.AppBarLayout>
 
 

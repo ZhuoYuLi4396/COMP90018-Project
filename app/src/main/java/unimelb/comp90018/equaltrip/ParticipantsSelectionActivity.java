@@ -9,6 +9,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.util.ArrayList;
 
 import android.widget.Toast;
+
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -26,6 +28,13 @@ public class ParticipantsSelectionActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_participants_selection);
+
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v ->
+                    getOnBackPressedDispatcher().onBackPressed()
+            );
+        }
 
         String tripId = getIntent().getStringExtra("tripId");
         if (tripId == null || tripId.isEmpty()) {
@@ -85,8 +94,7 @@ public class ParticipantsSelectionActivity extends AppCompatActivity{
     }
 
     private void setupListeners() {
-        // Back button
-        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
+
 
         // Confirm button
         btnConfirmParticipants.setOnClickListener(v -> {

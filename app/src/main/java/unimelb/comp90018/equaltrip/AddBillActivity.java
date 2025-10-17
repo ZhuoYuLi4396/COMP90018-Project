@@ -58,6 +58,7 @@ import android.content.pm.PackageManager;
 import com.google.android.gms.location.Granularity;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationResult;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
@@ -276,17 +277,12 @@ public class AddBillActivity extends AppCompatActivity {
         tvOcrResult    = findViewById(R.id.tv_ocr_result);
         btnRetryOcr    = findViewById(R.id.btn_retry_ocr);
 
-        // 返回键失效修复
-        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
-            toolbar.setNavigationOnClickListener(v -> {
-                View fakeBack = findViewById(R.id.btn_back);
-                if (fakeBack != null) {
-                    fakeBack.performClick();
-                } else {
-                    finish();
-                }
-            });
+            toolbar.setTitle("Participants");
+            toolbar.setNavigationOnClickListener(v ->
+                    getOnBackPressedDispatcher().onBackPressed()
+            );
         }
 
 
@@ -547,10 +543,6 @@ public class AddBillActivity extends AppCompatActivity {
         // Split amount views
         layoutSplitDetails = findViewById(R.id.layout_split_details);
         rvSplitAmounts     = findViewById(R.id.rv_split_amounts);
-
-        // Back button
-        ImageButton btnBack = findViewById(R.id.btn_back);
-        btnBack.setOnClickListener(v -> finish());
 
         // Receipt views（你原来就有）
         receiptPlaceholder = findViewById(R.id.receipt_placeholder);

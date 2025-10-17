@@ -46,7 +46,6 @@ public class SignInActivity extends AppCompatActivity {
         tilPassword = findViewById(R.id.tilPassword);
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
-        cbRemember = findViewById(R.id.cbRemember);
         tvError = findViewById(R.id.tvError);
         tvForgot = findViewById(R.id.tvForgot);
         tvNoAccount = findViewById(R.id.tvNoAccount);

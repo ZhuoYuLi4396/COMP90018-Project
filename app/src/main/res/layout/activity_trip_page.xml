@@ -14,10 +14,10 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/head_bar"
         android:layout_width="0dp"
-        android:layout_height="120dp"
+        android:layout_height="80dp"
         android:background="@android:color/transparent"
         android:paddingStart="@dimen/field_horizontal_margin"
-        android:paddingTop="40dp"
+        android:paddingTop="32dp"
         android:paddingEnd="@dimen/field_horizontal_margin"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
@@ -36,7 +36,7 @@
         android:contentDescription="@string/notifications"
         android:scaleType="centerInside"
         android:src="@drawable/ic_bluetooth_24"
-        android:translationY="15dp"
+        android:translationY="16dp"
         app:layout_constraintBottom_toBottomOf="@id/head_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/head_bar" />
