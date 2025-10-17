@@ -4,7 +4,7 @@
     <color name="white">#FFFFFFFF</color>
 
     <!-- Base / Figma -->
-    <color name="bg_page">#FFFFFF</color>
+    <color name="bg_page">#FAFBFD</color>
     <color name="text_primary">#000000</color>
     <color name="text_secondary">#666666</color>
     <color name="text_error">#D32F2F</color>
@@ -21,6 +21,7 @@
     <color name="link_blue">#1E88E5</color>
     <color name="text_success">#4CAF50</color>
     <color name="text_disabled">#9E9E9E</color>
+    <color name="selected_blue">#1E5AFF</color>
 
     <!-- 主蓝保持不变 -->
     <color name="primary_blue">#3A7AFE</color>
