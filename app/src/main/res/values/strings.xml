@@ -44,8 +44,11 @@
     <string name="filter">Filter</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
 
-    <!-- Trip 创建入口 -->
-    <string name="add_trip">Add new trip</string>
+    <!-- Trip & bill 创建入口 -->
+    <string name="add_trip">New trip</string>
+    <string name="add_bill">Add Bill</string>
+
+
 
     <!-- Add Trip 表单 -->
     <string name="add_trip_title">Add Trip</string>
@@ -66,15 +69,16 @@
 
     <string name="tripmates_label">Tripmates *</string>
     <string name="tripmates_add_via_bluetooth">Click to add tripmates via Bluetooth</string>
-    <string name="tripmates_add_by_email">Add by entering tripmate’s email</string>
+    <string name="tripmates_add_by_email">Add tripmates by email</string>
     <string name="tripmates_added_title">Tripmates added</string>
 
     <string name="create_trip">Create Trip</string>
     <string name="avatar">avatar</string>
     <string name="remove">remove</string>
 
-    <!-- Trip 详情（测试/最小化） -->
+    <!-- 详情（测试/最小化） -->
     <string name="trip_detail">Trip Detail</string>
+    <string name="bill_detail">Bill Detail</string>
 
     <!-- 相机/列表操作等 -->
     <string name="delete">Delete</string>
@@ -96,5 +100,7 @@
     <string name="ocr_preparing_model">Preparing recognition model...</string>
     <string name="ocr_woolworths_detected">Woolworths receipt detected</string>
 
+    <!-- add bill -->
+    <string name="confirm_selection">Confirm Participants</string>
 
 </resources>

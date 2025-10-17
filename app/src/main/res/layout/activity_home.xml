@@ -1,54 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/trip_page"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white">
+    android:background="@color/bg_page">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/head_bar"
+        android:layout_width="0dp"
+        android:layout_height="80dp"
+        android:background="@android:color/transparent"
+        android:paddingStart="@dimen/field_horizontal_margin"
+        android:paddingTop="32dp"
+        android:paddingEnd="@dimen/field_horizontal_margin"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:title="@string/equaltrip"
+        app:titleCentered="false"
+        app:titleTextAppearance="@style/ToolbarTitleText"
+        app:titleTextColor="@color/primary_blue" />
+
+    <ImageView
+        android:id="@+id/iv_bluetooth"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="@dimen/field_horizontal_margin"
+        android:contentDescription="@string/notifications"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_bluetooth_24"
+        android:translationY="16dp"
+        app:layout_constraintBottom_toBottomOf="@id/head_bar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/head_bar" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/contentContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="20dp"
-        app:layout_constraintTop_toTopOf="parent"
+        android:paddingStart="@dimen/field_horizontal_margin"
+        android:paddingEnd="@dimen/field_horizontal_margin"
+        android:paddingTop="32dp"
+        android:paddingBottom="32dp"
+        app:layout_constraintTop_toBottomOf="@id/head_bar"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- 顶部标题 -->
-        <TextView
-            android:id="@+id/tvBrand"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="EqualTrip"
-            android:textStyle="bold"
-            android:textSize="28sp"
-            android:textColor="@color/splash_blue"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"/>
-
-        <ImageButton
-            android:id="@+id/btnBell"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_notifications_24"
-            android:contentDescription="@string/notification"
-            app:tint="@android:color/black"
-            app:layout_constraintTop_toTopOf="@id/tvBrand"
-            app:layout_constraintBottom_toBottomOf="@id/tvBrand"
-            app:layout_constraintEnd_toEndOf="parent"/>
-
-        <!-- Hi, Username -->
         <TextView
             android:id="@+id/tvHi"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Hi,"
-            android:textSize="18sp"
-            android:textColor="#7A7A7A"
-            app:layout_constraintTop_toBottomOf="@id/tvBrand"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"
+            android:includeFontPadding="false"
+            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             android:layout_marginTop="16dp"/>
 
@@ -58,62 +68,51 @@
             android:layout_height="wrap_content"
             android:text="Username"
             android:textStyle="bold"
-            android:textSize="42sp"
+            android:textSize="32sp"
             android:textColor="@android:color/black"
-            app:layout_constraintBaseline_toBaselineOf="@id/tvHi"
+            android:includeFontPadding="false"
             app:layout_constraintStart_toEndOf="@id/tvHi"
-            android:layout_marginStart="8dp"/>
+            app:layout_constraintBottom_toBottomOf="@id/tvHi"
+            android:layout_marginStart="6dp"/>
 
-        <LinearLayout
-            android:id="@+id/rowTrips"
+
+        <TextView
+            android:id="@+id/tvGreeting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:text="Wish you have a good trip!"
+            android:textSize="16sp"
+            android:textColor="@android:color/black"
             app:layout_constraintTop_toBottomOf="@id/tvUsername"
             app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="8dp" />
 
-            <TextView
-                android:id="@+id/tvGreeting"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Wish you have a good day!"
-                android:textSize="18sp"
-                android:textColor="@android:color/black"
-                app:layout_constraintTop_toBottomOf="@id/tvUsername"
-                app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginTop="12dp"/>
-
-        </LinearLayout>
-
-        <!-- 6 unpaid bills -->
         <LinearLayout
             android:id="@+id/rowBills"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            app:layout_constraintTop_toBottomOf="@id/rowTrips"
+            app:layout_constraintTop_toBottomOf="@id/tvGreeting"
             app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginTop="6dp">
+            android:layout_marginTop="8dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Current trip ID: "
-                android:textSize="18sp"
-                android:textColor="@android:color/black"/>
+                android:text="Your current trip is "
+                android:textSize="16sp"
+                android:textColor="@color/text_secondary"/>
 
             <TextView
                 android:id="@+id/tvCurrentTripId"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=""
+                android:text="Unimelb Trip"
                 android:textStyle="bold"
-                android:textSize="18sp"
-                android:textColor="@android:color/black"/>
+                android:textSize="16sp"
+                android:textColor="@color/link_blue"/>
         </LinearLayout>
 
-        <!-- 只保留：交互式地图 -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/mapCard"
             android:layout_width="0dp"
@@ -122,13 +121,12 @@
             app:layout_constraintBottom_toTopOf="@id/rowButtons"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginTop="18dp"
-            android:layout_marginBottom="18dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
             app:cardCornerRadius="16dp"
             app:cardUseCompatPadding="true"
-            app:strokeColor="#D0D0D0"
+            app:cardElevation="4dp"
+            app:strokeColor="@color/field_stroke"
             app:strokeWidth="1dp">
 
             <androidx.fragment.app.FragmentContainerView
@@ -138,59 +136,54 @@
                 android:layout_height="match_parent"/>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 底部两个按钮 -->
         <LinearLayout
             android:id="@+id/rowButtons"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
+            android:orientation="vertical"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginBottom="16dp">
+            app:layout_constraintBottom_toBottomOf="parent">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNewTrip"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="New Trip"
+                android:text="@string/add_trip"
                 android:textAllCaps="false"
                 android:textSize="16sp"
-                app:cornerRadius="18dp"
-                app:icon="@drawable/ic_add_24"
-                app:iconSize="20dp"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:backgroundTint="@android:color/black"
-                app:rippleColor="@android:color/white"
-                android:textColor="@android:color/white"/>
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
+                android:minHeight="0dp"
+                app:cornerRadius="28dp"
+                app:backgroundTint="@color/btn_primary"
+                android:textColor="@color/btn_text_on_primary"
+                app:elevation="4dp"/>
+
 
             <Space
-                android:layout_width="16dp"
-                android:layout_height="1dp"/>
+                android:layout_width="1dp"
+                android:layout_height="8dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddBill"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="Add Bill"
+                android:text="@string/add_bill"
                 android:textAllCaps="false"
                 android:textSize="16sp"
-                app:cornerRadius="18dp"
-                app:iconSize="20dp"
-                app:iconGravity="textStart"
-                app:iconPadding="12dp"
-                app:strokeColor="#B0B0B0"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
+                android:minHeight="0dp"
+                app:cornerRadius="28dp"
+                app:strokeColor="@color/primary_blue"
                 app:strokeWidth="1dp"
-                app:backgroundTint="@android:color/transparent"
-                android:textColor="@android:color/black"/>
+                app:backgroundTint="@android:color/white"
+                android:textColor="@color/primary_blue"
+                app:elevation="4dp"/>
+
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- bottomNav -->
-    <!-- Jinglin: 这里统一改成include bottom_nav ，修复多次点选才能跳转的逻辑 -->
-    <include layout="@layout/include_bottom_nav"/>
+    <include layout="@layout/include_bottom_nav" />
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,11 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<!--
-  Author: Jinglin Lei
-  Assignment: SignUp Layout
-  Date: 2025-09-08
--->
-
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -13,9 +6,9 @@
     android:id="@+id/add_trip_page"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white">
+    android:background="@color/bg_page">
 
-    <!-- 顶部栏（含返回箭头） -->
+    <!-- AppBar -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -24,17 +17,21 @@
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
+            style="@style/Widget.Material3.Toolbar"
             android:layout_width="match_parent"
-            android:layout_height="88dp"
-        android:paddingTop="24dp"
-        android:background="@color/primary_blue"
-        app:navigationIcon="@drawable/ic_arrow_back_24_test"
-        app:title="Add Trip"
-        app:titleCentered="true"
-        app:popupTheme="@style/ThemeOverlay.Material3.Light"/>
+            android:layout_height="?attr/actionBarSize"
+            android:background="@android:color/transparent"
+            app:navigationIcon="@drawable/ic_arrow_back_24"
+            app:navigationIconTint="@android:color/white"
+            app:title="@string/add_trip_title"
+            app:titleTextColor="@android:color/white"
+            app:titleCentered="true"
+            app:contentInsetStart="0dp"
+            app:contentInsetStartWithNavigation="0dp"
+            app:popupTheme="@style/ThemeOverlay.Material3.Light"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- 可滚动表单 -->
+    <!-- 表单区 -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -45,16 +42,16 @@
             android:id="@+id/content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="@dimen/page_padding"
-            android:paddingEnd="@dimen/page_padding"
-            android:paddingBottom="@dimen/page_padding">
+            android:paddingStart="@dimen/field_horizontal_margin"
+            android:paddingEnd="@dimen/field_horizontal_margin"
+            android:paddingTop="@dimen/section_gap"
+            android:paddingBottom="@dimen/section_gap">
 
             <!-- Trip Name * -->
             <TextView
                 android:id="@+id/tvTripNameLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingTop="15dp"
                 android:text="@string/trip_name_label"
                 android:textSize="16sp"
                 android:textColor="@color/text_primary"
@@ -66,7 +63,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:paddingTop="8dp"
+                android:layout_marginTop="8dp"
                 app:boxBackgroundColor="@color/field_fill"
                 app:hintEnabled="false"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -77,7 +74,7 @@
                     android:id="@+id/etTripName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/trip_name_hint"/>
+                    android:hint="@string/trip_name_hint" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Location * Label -->
@@ -98,7 +95,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:paddingTop="8dp"
+                android:layout_marginTop="8dp"
                 app:boxBackgroundColor="@color/white"
                 app:boxStrokeColor="@color/field_stroke"
                 app:hintEnabled="false"
@@ -112,7 +109,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/location_hint"
-                    android:textColorHint="@color/field_stroke"/>
+                    android:textColorHint="@color/black"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Date *（起止两侧按钮 + “to” 文本） -->
@@ -134,11 +131,18 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/date_start_placeholder"
-                android:textColor="@color/text_hint"
-                app:iconTint="@color/text_hint"
-                app:cornerRadius="4dp"
+                android:textColor="@color/black"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:includeFontPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
                 app:icon="@drawable/ic_calendar_24"
-                app:iconGravity="textStart"
+                app:iconTint="@color/black"
+                app:iconGravity="start"
+                app:iconPadding="6dp"
+                app:iconSize="18dp"
+                app:cornerRadius="4dp"
                 app:layout_constraintEnd_toStartOf="@+id/tvTo"
                 app:layout_constraintHorizontal_weight="1"
                 app:layout_constraintStart_toStartOf="parent"
@@ -163,15 +167,22 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="@string/date_end_placeholder"
-                app:cornerRadius="4dp"
+                android:textColor="@color/black"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:includeFontPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
                 app:icon="@drawable/ic_calendar_24"
-                app:iconGravity="textStart"
-                android:textColor="@color/text_hint"
-                app:iconTint="@color/text_hint"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_weight="1"
+                app:iconTint="@color/black"
+                app:iconGravity="start"
+                app:iconPadding="6dp"
+                app:iconSize="18dp"
+                app:cornerRadius="4dp"
                 app:layout_constraintStart_toEndOf="@id/tvTo"
-                app:layout_constraintTop_toTopOf="@id/btnStartDate"/>
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/btnStartDate"
+                app:layout_constraintHorizontal_weight="1"/>
 
             <!-- Description Label -->
             <TextView
@@ -191,7 +202,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:paddingTop="8dp"
+                android:layout_marginTop="8dp"
                 app:boxBackgroundColor="@color/field_fill"
                 app:boxStrokeColor="@color/field_stroke"
                 app:hintEnabled="false"
@@ -281,7 +292,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tilMateEmail"/>
 
-            <!-- 成员列表（用于 Edit/显示） -->
+            <!-- 成员列表 -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvTripmates"
                 android:layout_width="0dp"
@@ -294,11 +305,12 @@
                 app:layout_constraintTop_toBottomOf="@id/tvTripmatesAdded"
                 tools:listitem="@layout/item_tripmate_email" />
 
-            <!-- Save changes：紧接在 rvTripmates 下面 -->
+            <!-- Create Trip -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCreateTrip"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
+                android:layout_marginTop="@dimen/section_gap"
                 android:text="@string/create_trip"
                 android:textColor="@android:color/white"
                 app:backgroundTint="@color/primary_blue"
@@ -307,8 +319,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/rvTripmates" />
-
-            <!-- app:layout_constraintTop_toBottomOf="@id/btnAddMember" -->
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

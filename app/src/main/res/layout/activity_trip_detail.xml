@@ -5,7 +5,7 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white">
+    android:background="@color/bg_page">
 
     <!-- 顶部头卡 -->
     <com.google.android.material.card.MaterialCardView
@@ -32,7 +32,6 @@
                 android:layout_height="?attr/actionBarSize"
                 android:background="@android:color/transparent"
                 android:paddingStart="0dp"
-                android:paddingLeft="0dp"
                 app:navigationIcon="@drawable/ic_arrow_back_24_test"
                 app:navigationIconTint="@android:color/white"
                 app:contentInsetStart="0dp"

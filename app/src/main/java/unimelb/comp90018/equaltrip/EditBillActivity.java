@@ -81,6 +81,14 @@ public class EditBillActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_bill);
 
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            toolbar.setTitle("Edit Bill");
+            toolbar.setNavigationOnClickListener(v ->
+                    getOnBackPressedDispatcher().onBackPressed()
+            );
+        }
+
         tripId = getIntent().getStringExtra("tripId");
         billId = getIntent().getStringExtra("billId");
 
@@ -93,7 +101,6 @@ public class EditBillActivity extends AppCompatActivity {
         db = FirebaseFirestore.getInstance();
 
         initializeViews();
-        setupToolbar();
         setupListeners();
         setupSpinners();
         setupCategoryButtons();
@@ -101,13 +108,6 @@ public class EditBillActivity extends AppCompatActivity {
         loadTripDateRange();
 
         loadBillData();
-    }
-
-    private void setupToolbar() {
-        ImageButton btnBack = findViewById(R.id.btn_back);
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> finish());
-        }
     }
 
     private void loadBillData() {

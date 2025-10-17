@@ -7,6 +7,8 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,6 +24,13 @@ public class PayerSelectionActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_payer_selection);
+
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v ->
+                    getOnBackPressedDispatcher().onBackPressed()
+            );
+        }
 
         //初始化控件
         initializeViews();
@@ -81,8 +90,6 @@ public class PayerSelectionActivity extends AppCompatActivity{
     }
 
     private void setupListeners() {
-        // Back button
-        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
         // Change payer button
         btnChangePayer.setOnClickListener(v -> {
