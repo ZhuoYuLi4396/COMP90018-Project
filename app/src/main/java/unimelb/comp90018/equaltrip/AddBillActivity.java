@@ -280,7 +280,7 @@ public class AddBillActivity extends AppCompatActivity {
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
-            toolbar.setTitle("Participants");
+            toolbar.setTitle("Add Bill");
             toolbar.setNavigationOnClickListener(v ->
                     getOnBackPressedDispatcher().onBackPressed()
             );
