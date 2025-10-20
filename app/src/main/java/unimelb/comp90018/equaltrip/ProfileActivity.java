@@ -22,6 +22,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -51,7 +52,7 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseUser currentUser;
     private FirebaseFirestore db;
     private DocumentReference attachedUserDoc; // 真正监听到的那条文档
-
+    private ListenerRegistration profileListener; // 解决随机崩溃
     private TextView tvNameValue;
 
 
@@ -151,6 +152,8 @@ public class ProfileActivity extends AppCompatActivity {
      * 3) 找到文档后，挂 snapshotListener 实时更新 UI（userId 与 email）
      */
     private void attachUserProfileListener(String authUid) {
+        if (isFinishing() || isDestroyed()) return; // 安全检查，防止Activity被销毁后仍然启动监听
+
         DocumentReference docById = db.collection("users").document(authUid);
         docById.get().addOnSuccessListener(snap -> {
             if (snap != null && snap.exists()) {
@@ -186,6 +189,7 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    /*
     private void attachListenerOnDoc(DocumentReference userDoc) {
         attachedUserDoc = userDoc;
         attachedUserDoc.addSnapshotListener(this, (snap, e) -> {
@@ -210,6 +214,44 @@ public class ProfileActivity extends AppCompatActivity {
             }
             tvProfileEmail.setText(mail != null ? mail : "No email");
         });
+    }
+    */
+    private void attachListenerOnDoc(DocumentReference userDoc) {
+        attachedUserDoc = userDoc;
+
+        // 防止重复监听
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
+
+        profileListener = attachedUserDoc.addSnapshotListener(this, (snap, e) -> {
+            if (e != null || snap == null) return;
+            if (!snap.exists()) return;
+            if (isFinishing() || isDestroyed()) return;   // ← 新增安全检查
+
+            String name = snap.getString("userId");
+            if (name == null || name.trim().isEmpty()) {
+                name = (currentUser.getDisplayName() != null && !currentUser.getDisplayName().isEmpty())
+                        ? currentUser.getDisplayName() : "User";
+            }
+            tvProfileName.setText(name);
+            if (tvNameValue != null) tvNameValue.setText(name);
+
+            String mail = snap.getString("email");
+            if (mail == null || mail.trim().isEmpty()) {
+                mail = currentUser.getEmail();
+            }
+            tvProfileEmail.setText(mail != null ? mail : "No email");
+        });
+    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
     }
 
     // ===== 工具方法 =====
