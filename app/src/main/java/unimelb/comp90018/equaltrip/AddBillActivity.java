@@ -198,7 +198,6 @@ public class AddBillActivity extends AppCompatActivity {
     // —— 分类：用户是否手动选择过 —— //
     private boolean categoryManuallyChosen = false;
 
-
     // ====== 新增：Places 自动补全 & 定位 ======
     private PlacesClient placesClient;
     private AutocompleteSessionToken sessionToken;
@@ -261,9 +260,6 @@ public class AddBillActivity extends AppCompatActivity {
         super.onStop();
         isActive = false;
     }
-
-
-
 
 
     @Override
@@ -352,10 +348,6 @@ public class AddBillActivity extends AppCompatActivity {
         etLocation.setAdapter(addrAdapter);
         etLocation.setThreshold(1);
 
-
-
-
-
         // 文本变化 -> 防抖 -> 自动补全
         etLocation.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -382,15 +374,12 @@ public class AddBillActivity extends AppCompatActivity {
             }
 
 
-
-
-
         });
 
         // 键盘搜索也可触发一次
         etLocation.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                queryAutocomplete(etLocation.getText().toString().trim());
+                queryAutocompleteOSM(etLocation.getText().toString().trim());
                 return true;
             }
             return false;
@@ -425,6 +414,7 @@ public class AddBillActivity extends AppCompatActivity {
 
                     // 4) 先确保“未锁”，让自动分类能生效
                     categoryLocked = false;
+                    categoryManuallyChosen = false;
 
                     // 5) 拉 Nominatim 反查并自动分类；完成后再把分类锁住，避免后续被覆盖
                     fetchCategoryFromNominatimDebounced(latitude, longitude, () -> {
@@ -439,17 +429,10 @@ public class AddBillActivity extends AppCompatActivity {
             etLocation.post(() -> suppressLocationWatcher = false);
         });
 
-
-
-
-
-
-
-
-
         // GPS按钮
         btnUseGps.setOnClickListener(v -> {
             categoryLocked = false;
+            categoryManuallyChosen = false;
             if (hasLocationPermission()) {
                 checkLocationSettingsThenUse();
             } else {
@@ -1188,11 +1171,11 @@ public class AddBillActivity extends AppCompatActivity {
             }
         }
         if (!locationPickedFromSuggestion) {
-            etLocation.setError("请从下拉列表选择一个关联地址");
+            etLocation.setError("Please select a matched address from the dropdown.");
             new AlertDialog.Builder(this)
-                    .setTitle("请选择关联地址")
-                    .setMessage("为了确保位置与分类准确，请从下拉建议中选择一个地址，而不是只输入文本。")
-                    .setPositiveButton("知道了", (d, w) -> {
+                    .setTitle("Select a suggested address")
+                    .setMessage("To ensure accurate location and category detection, please pick an address from the dropdown list instead of typing manually.")
+                    .setPositiveButton("Got it", (d, w) -> {
                         etLocation.requestFocus();
                         etLocation.showDropDown();
                     })
@@ -1657,7 +1640,12 @@ public class AddBillActivity extends AppCompatActivity {
                             + (amenity.isEmpty() ? "" : " amenity:" + amenity));
 
                     runOnUiThread(() -> {
-                        autoSelectCategory(raw);
+                        // ✅ 如果用户已经手动选过，就不要再自动分类
+                        if (categoryManuallyChosen) {
+                            // Log.d("Category", "用户已手动选择分类，跳过自动分类");
+                        } else {
+                            autoSelectCategory(raw);
+                        }
                         if (after != null) after.run();
                     });
                 } catch (Exception ex) {
@@ -2106,6 +2094,40 @@ public class AddBillActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        // ✅ 确保 GPS 按钮恢复监听
+        if (btnUseGps != null) {
+            btnUseGps.setOnClickListener(v -> {
+                categoryLocked = false;
+                categoryManuallyChosen = false;
+
+                if (hasLocationPermission()) {
+                    checkLocationSettingsThenUse();
+                } else {
+                    new AlertDialog.Builder(this)
+                            .setTitle("Enable location?")
+                            .setMessage("To autofill nearby addresses, allow EqualTrip to access your location.")
+                            .setPositiveButton("Allow", (d, w) -> requestLocationPerms.launch(new String[]{
+                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                            }))
+                            .setNegativeButton("Not now", null)
+                            .show();
+                }
+            });
+        }
+
+        // ✅ 确保自动补全的文本监听恢复
+        if (etLocation != null && addrAdapter != null) {
+            etLocation.setAdapter(addrAdapter);
+            etLocation.setThreshold(1);
+        }
+    }
+
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         try { if (latinRecognizer != null) latinRecognizer.close(); } catch (Exception ignored) {}
@@ -2355,6 +2377,7 @@ public class AddBillActivity extends AppCompatActivity {
                     String line = a.getAddressLine(0);
                     if (line != null && !line.trim().isEmpty() && !line.equalsIgnoreCase("Melbourne, Victoria, Australia")) {
                         fillLocationProgrammatically(line);
+                        locationPickedFromSuggestion = true; // ✅ GPS结果视为有效地址
                         return; // ✅ 成功，直接返回
                     }
                 }
@@ -2407,8 +2430,8 @@ public class AddBillActivity extends AppCompatActivity {
 
                     final String fullAddr = sb.length() > 0 ? sb.toString().trim() : (lat + ", " + lon);
                     runOnUiThread(() -> {
-                        etLocation.setText(fullAddr);
-                        etLocation.setSelection(fullAddr.length());
+                        fillLocationProgrammatically(fullAddr); // ✅ 用已有函数避免触发TextWatcher
+                        locationPickedFromSuggestion = true;    // ✅ 标记为已选择地址
                     });
 
                 } catch (Exception ex) {
