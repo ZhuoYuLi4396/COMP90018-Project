@@ -157,7 +157,7 @@ public class BleUidExchange {
         // 停止旧广告
         try { if (advertiser != null) advertiser.stopAdvertising(adCallback); } catch (Exception ignored) {}
         advertiser = adapter.getBluetoothLeAdvertiser();
-        if (advertiser == null) { toast("无法获取 BLE Advertiser"); return; }
+        if (advertiser == null) { toast("Unable to retrieve BLE Advertiser"); return; }
 
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
@@ -172,7 +172,7 @@ public class BleUidExchange {
 
         advertiser.startAdvertising(settings, data, adCallback);
         if (durationMs > 0) mainH.postDelayed(this::stopAdvertisingSafe, durationMs);
-        toast("开始广播（PIN=" + pin4 + (durationMs > 0 ? ", 限时 " + (durationMs/1000) + "s" : ", 持续") + "）");
+        toast("Commencing broadcast（PIN=" + pin4 + (durationMs > 0 ? ", limited time " + (durationMs/1000) + "s" : ", persist") + "）");
     }
 
     // B 端：用 PIN 扫描；durationMs<=0 则用默认 60s
@@ -186,7 +186,7 @@ public class BleUidExchange {
         isConnecting = false;
 
         if (scanner == null) scanner = adapter.getBluetoothLeScanner();
-        if (scanner == null) { toast("无法获取 BLE Scanner"); return; }
+        if (scanner == null) { toast("Unable to obtain BLE Scanner"); return; }
 
         UUID target = composeUuidWithPin(pin4);
         expectedClientServiceUuid = target;  // 连接后按这个 UUID 去找 Service
@@ -219,7 +219,7 @@ public class BleUidExchange {
 
         try { if (advertiser != null) advertiser.stopAdvertising(adCallback); } catch (Exception ignored) {}
         advertiser = adapter.getBluetoothLeAdvertiser();
-        if (advertiser == null) { toast("无法获取 BLE Advertiser"); return; }
+        if (advertiser == null) { toast("Unable to retrieve BLE Advertiser"); return; }
 
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
@@ -233,7 +233,7 @@ public class BleUidExchange {
                 .build();
 
         advertiser.startAdvertising(settings, data, adCallback);
-        toast("开始广播 UID（限时 " + (durationMs/1000) + "s）");
+        toast("Commencing broadcast UID（limited time " + (durationMs/1000) + "s）");
         mainH.postDelayed(this::stopAdvertisingSafe, durationMs);
     }
 
@@ -255,7 +255,7 @@ public class BleUidExchange {
         }
         @Override public void onStartFailure(int errorCode) {
             Log.d(TAG, "Advertising failed: " + errorCode);
-            toast("广播失败 code=" + errorCode);
+            toast("Broadcast failed code=" + errorCode);
         }
     };
 
@@ -272,7 +272,7 @@ public class BleUidExchange {
         expectedClientServiceUuid = null; // 用固定 SERVICE_UUID
 
         if (scanner == null) scanner = adapter.getBluetoothLeScanner();
-        if (scanner == null) { toast("无法获取 BLE Scanner"); return; }
+        if (scanner == null) { toast("Unable to retrieve BLE Scanner"); return; }
 
         ScanFilter filter = new ScanFilter.Builder()
                 .setServiceUuid(new ParcelUuid(SERVICE_UUID))
@@ -486,7 +486,7 @@ public class BleUidExchange {
     // ========= 权限/前置校验 =========
     private boolean checkPrerequisitesForRadio(boolean forAdvertise) {
         if (adapter == null) {
-            toast("本机不支持蓝牙");
+            toast("This device does not support Bluetooth.");
             return false;
         }
 
@@ -503,19 +503,19 @@ public class BleUidExchange {
             } else {
                 // 无 CONNECT 权限则去设置页
                 openBluetoothSettingsFallback();
-                toast("请在系统设置中先打开蓝牙");
+                toast("Please enable Bluetooth in your system settings first.");
             }
             return false;
         }
 
         if (!hasAllPerms()) {
-            toast("缺少蓝牙权限");
+            toast("Bluetooth permission is missing");
             return false;
         }
         if (forAdvertise) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
                     !adapter.isMultipleAdvertisementSupported()) {
-                toast("设备不支持 BLE 广播");
+                toast("The device does not support BLE broadcasting.");
                 return false;
             }
         }
