@@ -141,7 +141,7 @@
                         android:paddingStart="8dp"
                         android:paddingEnd="8dp"
                         android:background="@android:color/transparent"
-                        android:hint="Start typing e.g. 462 ..."
+                        android:hint="Type location or use GPS"
                         android:completionThreshold="1"
                         android:inputType="textPostalAddress"
                         android:dropDownVerticalOffset="4dp"
