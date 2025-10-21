@@ -96,7 +96,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                app:boxBackgroundColor="@color/white"
+                app:boxBackgroundColor="@color/field_fill"
                 app:boxStrokeColor="@color/field_stroke"
                 app:hintEnabled="false"
                 app:startIconDrawable="@drawable/ic_location_24"
@@ -108,8 +108,8 @@
                     android:id="@+id/etLocation"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/location_hint"
-                    android:textColorHint="@color/black"/>
+                    android:hint="e.g. Melbourne, VIC"
+                    android:textColorHint="@color/text_secondary"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Date *（起止两侧按钮 + “to” 文本） -->
