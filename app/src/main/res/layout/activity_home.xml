@@ -24,19 +24,6 @@
         app:titleTextAppearance="@style/ToolbarTitleText"
         app:titleTextColor="@color/primary_blue" />
 
-    <ImageView
-        android:id="@+id/iv_bluetooth"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginEnd="@dimen/field_horizontal_margin"
-        android:contentDescription="@string/notifications"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_bluetooth_24"
-        android:translationY="16dp"
-        app:layout_constraintBottom_toBottomOf="@id/head_bar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/head_bar" />
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/contentContainer"
         android:layout_width="0dp"
